@@ -1,9 +1,7 @@
 use chrono::Utc;
 use dotenv::dotenv;
 use serenity::async_trait;
-use serenity::model::channel::Embed;
 use serenity::model::channel::Message;
-use serenity::model::channel::Reaction;
 use serenity::model::prelude::ReactionType;
 use serenity::prelude::*;
 use std::env;
@@ -18,6 +16,7 @@ struct Handler;
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content == "!squad" {
+            // Create new squad posting
             let posting = msg
                 .channel_id
                 .send_message(&ctx.http, |m| {
@@ -34,16 +33,35 @@ impl EventHandler for Handler {
                     });
                     return m;
                 })
-                .await
-                .unwrap();
+                .await;
+            // Check for errors in creating squad posting
+            let posting = match posting {
+                Ok(p) => p,
+                Err(why) => {
+                    println!("Error creating posting: {:?}", why);
+                    return;
+                }
+            };
+            // Create first member of the squad
             let member = Member {
                 user: &msg.author,
                 hours: 5,
                 expires: Utc::now(),
             };
+            // Add member to members list
             let mut members = vec![member];
+            // Create reaction options and corresponding values
             let mut options = HashMap::new();
             options.insert(ReactionType::from_str("1️⃣").unwrap(), 1);
+            options.insert(ReactionType::from_str("2️⃣").unwrap(), 2);
+            options.insert(ReactionType::from_str("3️⃣").unwrap(), 3);
+            options.insert(ReactionType::from_str("4️⃣").unwrap(), 4);
+            options.insert(ReactionType::from_str("5️⃣").unwrap(), 5);
+            options.insert(ReactionType::from_str("6️⃣").unwrap(), 6);
+            options.insert(ReactionType::from_str("7️⃣").unwrap(), 7);
+            options.insert(ReactionType::from_str("8️⃣").unwrap(), 8);
+            options.insert(ReactionType::from_str("9️⃣").unwrap(), 9);
+            // Create new squad
             let squad = Squad {
                 posting: posting,
                 size: 5,
