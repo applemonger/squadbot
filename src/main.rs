@@ -33,6 +33,20 @@ async fn create_posting(ctx: &Context, msg: &Message) -> Result<Message, Error> 
         .await
 }
 
+fn create_options() -> HashMap<ReactionType, u8> {
+    let mut options = HashMap::new();
+    options.insert(ReactionType::from_str("1️⃣").unwrap(), 1);
+    options.insert(ReactionType::from_str("2️⃣").unwrap(), 2);
+    options.insert(ReactionType::from_str("3️⃣").unwrap(), 3);
+    options.insert(ReactionType::from_str("4️⃣").unwrap(), 4);
+    options.insert(ReactionType::from_str("5️⃣").unwrap(), 5);
+    options.insert(ReactionType::from_str("6️⃣").unwrap(), 6);
+    options.insert(ReactionType::from_str("7️⃣").unwrap(), 7);
+    options.insert(ReactionType::from_str("8️⃣").unwrap(), 8);
+    options.insert(ReactionType::from_str("9️⃣").unwrap(), 9);
+    options
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
@@ -54,16 +68,7 @@ impl EventHandler for Handler {
             // Add member to members list
             let mut members = vec![member];
             // Create reaction options and corresponding values
-            let mut options = HashMap::new();
-            options.insert(ReactionType::from_str("1️⃣").unwrap(), 1);
-            options.insert(ReactionType::from_str("2️⃣").unwrap(), 2);
-            options.insert(ReactionType::from_str("3️⃣").unwrap(), 3);
-            options.insert(ReactionType::from_str("4️⃣").unwrap(), 4);
-            options.insert(ReactionType::from_str("5️⃣").unwrap(), 5);
-            options.insert(ReactionType::from_str("6️⃣").unwrap(), 6);
-            options.insert(ReactionType::from_str("7️⃣").unwrap(), 7);
-            options.insert(ReactionType::from_str("8️⃣").unwrap(), 8);
-            options.insert(ReactionType::from_str("9️⃣").unwrap(), 9);
+            let options = create_options();
             // Create new squad
             let squad = Squad {
                 posting: posting,
