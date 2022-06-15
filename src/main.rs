@@ -9,33 +9,36 @@ pub mod squad;
 use crate::squad::{Member, Squad};
 use std::collections::HashMap;
 use std::str::FromStr;
+use serenity::Error;
 
 struct Handler;
+
+async fn create_posting(ctx: &Context, msg: &Message) -> Result<Message, Error> {
+    // Create new squad posting
+    msg.channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.title("Assemble your squad!");
+                e.description(
+                    "✅ React to this message to ready up!\n\
+                    1️⃣ Use the number reacts to indicate for how many hours you are \
+                    available.\n\n\
+                    SquadBot will message you when at least <size> people are \
+                    ready.\n\n",
+                );
+                return e;
+            });
+            return m;
+        })
+        .await
+}
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content == "!squad" {
-            // Create new squad posting
-            let posting = msg
-                .channel_id
-                .send_message(&ctx.http, |m| {
-                    m.embed(|e| {
-                        e.title("Assemble your squad!");
-                        e.description(
-                            "✅ React to this message to ready up!\n\
-                            1️⃣ Use the number reacts to indicate for how many hours you are \
-                            available.\n\n\
-                            SquadBot will message you when at least <size> people are \
-                            ready.\n\n",
-                        );
-                        return e;
-                    });
-                    return m;
-                })
-                .await;
             // Check for errors in creating squad posting
-            let posting = match posting {
+            let posting = match create_posting(&ctx, &msg).await {
                 Ok(p) => p,
                 Err(why) => {
                     println!("Error creating posting: {:?}", why);
