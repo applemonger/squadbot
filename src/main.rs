@@ -1,26 +1,20 @@
 use dotenv::dotenv;
 use serenity::async_trait;
-use serenity::Client;
-use serenity::model::prelude::Ready;
+use serenity::builder::{CreateActionRow, CreateButton};
+use serenity::framework::standard::macros::group;
+use serenity::framework::standard::StandardFramework;
 use serenity::model::interactions::application_command::{
-    ApplicationCommand,
-    ApplicationCommandOptionType,
-    ApplicationCommandInteraction,
-    ApplicationCommandInteractionDataOptionValue
+    ApplicationCommand, ApplicationCommandInteraction,
+    ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType,
 };
 use serenity::model::interactions::message_component::ButtonStyle;
-use serenity::builder::{CreateActionRow, CreateButton};
 use serenity::model::interactions::{Interaction, InteractionResponseType};
-use serenity::model::prelude::ReactionType;
+use serenity::model::prelude::Ready;
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
-use serenity::framework::standard::macros::group;
-use serenity::framework::standard::{StandardFramework};
-use serenity::Error;
 use serenity::utils::Colour;
-use std::collections::HashMap;
-use std::str::FromStr;
-use std::error::Error as StdError;
-use std::{env, fmt};
+use serenity::Client;
+use serenity::Error;
+use std::env;
 
 #[group]
 struct General;
@@ -63,7 +57,7 @@ async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String 
             } else {
                 "Please provide a valid size.".to_string()
             }
-        },
+        }
         _ => "Not implemented :(".to_string(),
     }
 }
@@ -76,14 +70,14 @@ async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content:
                 .interaction_response_data(|m| {
                     m.embed(|e| {
                         e.title("Assemble your squad!");
-                        e.description(
-                            format!(
-                                "✅ React to this message to ready up!\n\
+                        e.description(format!(
+                            "✅ React to this message to ready up!\n\
                                 1️⃣ Use the number reacts to indicate for how many hours you are \
                                 available.\n\n\
                                 SquadBot will message you when at least {} people are \
-                                ready.\n\n", content)
-                            );
+                                ready.\n\n",
+                            content
+                        ));
                         e.colour(Colour::from_rgb(59, 165, 93));
                         return e;
                     });
@@ -97,7 +91,7 @@ async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content:
     }
 }
 
-async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Error>  {
+async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Error> {
     ApplicationCommand::create_global_application_command(&ctx.http, |command| {
         command
             .name("squad")
@@ -126,7 +120,7 @@ impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
             let content = parse_squad_command(&command).await;
-            respond(ctx, &command, &content).await;   
+            respond(ctx, &command, &content).await;
         }
     }
 }
