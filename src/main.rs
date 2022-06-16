@@ -25,68 +25,23 @@ struct General;
 
 struct Handler;
 
-#[derive(Debug)]
-enum Options {
-    One,
-    Two,
-    Three,
-    Four
+fn button(hours: u8) -> CreateButton {
+    let mut b = CreateButton::default();
+    b.custom_id(hours.to_string().to_ascii_lowercase());
+    b.label(hours.to_string());
+    b.style(ButtonStyle::Primary);
+    b
 }
 
-#[derive(Debug)]
-struct ParseComponentError(String);
-
-impl fmt::Display for ParseComponentError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Failed to parse {} as component", self.0)
-    }
-}
-
-impl StdError for ParseComponentError {}
-
-impl fmt::Display for Options {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::One => write!(f, "1"),
-            Self::Two => write!(f, "2"),
-            Self::Three => write!(f, "3"),
-            Self::Four => write!(f, "4"),
-        }
-    }
-}
-
-impl FromStr for Options {
-    type Err = ParseComponentError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "1" => Ok(Options::One),
-            "2" => Ok(Options::Two),
-            "3" => Ok(Options::Three),
-            "4" => Ok(Options::Four),
-            _ => Err(ParseComponentError(s.to_string())),
-        }
-    }
-}
-
-impl Options {
-    fn button(&self) -> CreateButton {
-        let mut b = CreateButton::default();
-        b.custom_id(self.to_string().to_ascii_lowercase());
-        b.label(self);
-        b.style(ButtonStyle::Primary);
-        b
-    }
-
-    fn action_row() -> CreateActionRow {
-        let mut ar = CreateActionRow::default();
-        // We can add up to 5 buttons per action row
-        ar.add_button(Options::One.button());
-        ar.add_button(Options::Two.button());
-        ar.add_button(Options::Three.button());
-        ar.add_button(Options::Four.button());
-        ar
-    }
+fn action_row() -> CreateActionRow {
+    let mut ar = CreateActionRow::default();
+    // We can add up to 5 buttons per action row
+    ar.add_button(button(1));
+    ar.add_button(button(2));
+    ar.add_button(button(3));
+    ar.add_button(button(4));
+    ar.add_button(button(5));
+    ar
 }
 
 #[async_trait]
@@ -151,7 +106,7 @@ impl EventHandler for Handler {
                                 e.colour(Colour::from_rgb(59, 165, 93));
                                 return e;
                             });
-                            m.components(|c| c.add_action_row(Options::action_row()));
+                            m.components(|c| c.add_action_row(action_row()));
                             return m;
                         })
                 })
@@ -192,24 +147,3 @@ async fn main() {
         println!("Client error: {:?}", why);
     }
 }
-
-// #[command]
-// async fn squad(ctx: &Context, msg: &Message) -> CommandResult {
-//     msg.channel_id
-//         .send_message(&ctx.http, |m| {
-//             m.embed(|e| {
-//                 e.title("Assemble your squad!");
-//                 e.description(
-//                     "✅ React to this message to ready up!\n\
-//                     1️⃣ Use the number reacts to indicate for how many hours you are \
-//                     available.\n\n\
-//                     SquadBot will message you when at least <size> people are \
-//                     ready.\n\n",
-//                 );
-//                 return e;
-//             });
-//             return m;
-//         })
-//         .await?;
-//     Ok(())
-// }
