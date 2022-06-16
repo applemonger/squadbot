@@ -121,6 +121,14 @@ async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Erro
     .await
 }
 
+fn build_squad(con: &mut redis::Connection, response: &Message) -> redis::RedisResult<()> {
+    let message_id = response.id.as_u64().to_string();
+    let squad_id = format!("squad:{}", &message_id);
+    let members_id = format!("members:{}", &message_id);
+    let _ : () = redis::cmd("HSET").arg(squad_id).arg("members").arg(members_id).query(con)?;
+    Ok(())
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -137,7 +145,7 @@ impl EventHandler for Handler {
                 let content = parse_squad_command(&command).await;
                 match respond(&ctx, &command, &content).await {
                     Ok(response) => {
-                        let con = {
+                        let mut con = {
                             println!("Connecting to redis server...");
                             let data_read = ctx.data.read().await;
                             let redis_client_lock = data_read
@@ -147,12 +155,14 @@ impl EventHandler for Handler {
                             let redis_client = redis_client_lock.read().await;
                             redis_client.get_connection().unwrap()
                         };
-                        println!("{}", response.id.as_u64().to_string());
-                    }
+                        if let Err(_) = build_squad(&mut con, &response) {
+                            println!("Unable to create squad.");
+                        }
+                    },
                     Err(_) => {
                         println!("Unable to respond to command.");
                     }
-                };
+                }
             }
             Interaction::MessageComponent(component_interaction) => {
                 println!("{}", component_interaction.message.id);
