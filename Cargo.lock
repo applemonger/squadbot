@@ -902,6 +902,7 @@ dependencies = [
  "redis",
  "serenity",
  "tokio",
+ "typemap_rev",
 ]
 
 [[package]]

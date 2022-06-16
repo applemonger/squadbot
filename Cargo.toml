@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+typemap_rev = "0.1.5"
 lazy_static = "1.4.0"
 redis = "0.21.5"
 chrono = "0.4.19"

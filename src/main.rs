@@ -1,4 +1,5 @@
 use dotenv::dotenv;
+use redis;
 use serenity::async_trait;
 use serenity::builder::{CreateActionRow, CreateButton};
 use serenity::framework::standard::macros::group;
@@ -9,17 +10,26 @@ use serenity::model::interactions::application_command::{
 };
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::interactions::{Interaction, InteractionResponseType};
-use serenity::model::prelude::Ready;
+use serenity::model::prelude::{Message, Ready};
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::utils::Colour;
 use serenity::Client;
 use serenity::Error;
 use std::env;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use typemap_rev::TypeMapKey;
 
 #[group]
 struct General;
 
 struct Handler;
+
+struct Redis;
+
+impl TypeMapKey for Redis {
+    type Value = Arc<RwLock<redis::Client>>;
+}
 
 fn button(hours: u8) -> CreateButton {
     let mut b = CreateButton::default();
@@ -62,7 +72,11 @@ async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String 
     }
 }
 
-async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content: &String) -> Result<(), Error> {
+async fn respond(
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+    content: &String,
+) -> Result<Message, Error> {
     command
         .create_interaction_response(&ctx.http, |response| {
             response
@@ -85,7 +99,8 @@ async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content:
                     return m;
                 })
         })
-        .await
+        .await?;
+    command.get_interaction_response(&ctx.http).await
 }
 
 async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Error> {
@@ -110,16 +125,35 @@ async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Erro
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
-        let squad_command = register_squad_command(ctx).await;
-        println!("Pushed global slash command: {:#?}", squad_command);
+        match register_squad_command(ctx).await {
+            Ok(_) => println!("Registered global commands."),
+            Err(error) => println!("Error registering global commands: {:?}", error),
+        }
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
             Interaction::ApplicationCommand(command) => {
                 let content = parse_squad_command(&command).await;
-                let response = respond(ctx, &command, &content).await;
-            },
+                match respond(&ctx, &command, &content).await {
+                    Ok(response) => {
+                        let con = {
+                            println!("Connecting to redis server...");
+                            let data_read = ctx.data.read().await;
+                            let redis_client_lock = data_read
+                                .get::<Redis>()
+                                .expect("Expected Redis in TypeMap")
+                                .clone();
+                            let redis_client = redis_client_lock.read().await;
+                            redis_client.get_connection().unwrap()
+                        };
+                        println!("{}", response.id.as_u64().to_string());
+                    }
+                    Err(_) => {
+                        println!("Unable to respond to command.");
+                    }
+                };
+            }
             Interaction::MessageComponent(component_interaction) => {
                 println!("{}", component_interaction.message.id);
             }
@@ -151,6 +185,13 @@ async fn main() {
         .framework(framework)
         .await
         .expect("Client creation failed.");
+
+    // Add Redis connection
+    {
+        let mut data = client.data.write().await;
+        let redis = redis::Client::open("redis://127.0.0.1:6379/").unwrap();
+        data.insert::<Redis>(Arc::new(RwLock::new(redis)));
+    }
 
     // Start
     if let Err(why) = client.start().await {
