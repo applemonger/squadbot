@@ -5,6 +5,7 @@ use serenity::model::prelude::Ready;
 use serenity::model::interactions::application_command::{
     ApplicationCommand,
     ApplicationCommandOptionType,
+    ApplicationCommandInteraction,
     ApplicationCommandInteractionDataOptionValue
 };
 use serenity::model::interactions::message_component::ButtonStyle;
@@ -14,6 +15,7 @@ use serenity::model::prelude::ReactionType;
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::framework::standard::macros::group;
 use serenity::framework::standard::{StandardFramework};
+
 use serenity::utils::Colour;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -44,6 +46,58 @@ fn action_row() -> CreateActionRow {
     ar
 }
 
+async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String {
+    match command.data.name.as_str() {
+        "squad" => {
+            let options = command
+                .data
+                .options
+                .get(0)
+                .expect("Expected squad size.")
+                .resolved
+                .as_ref()
+                .expect("Expected integer.");
+
+            if let ApplicationCommandInteractionDataOptionValue::Integer(size) = options {
+                size.to_string()
+            } else {
+                "Please provide a valid size.".to_string()
+            }
+        },
+        _ => "Not implemented :(".to_string(),
+    }
+}
+
+async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content: &String) {
+    if let Err(why) = command
+        .create_interaction_response(&ctx.http, |response| {
+            response
+                .kind(InteractionResponseType::ChannelMessageWithSource)
+                .interaction_response_data(|m| {
+                    m.embed(|e| {
+                        e.title("Assemble your squad!");
+                        e.description(
+                            format!(
+                                "✅ React to this message to ready up!\n\
+                                1️⃣ Use the number reacts to indicate for how many hours you are \
+                                available.\n\n\
+                                SquadBot will message you when at least {} people are \
+                                ready.\n\n", content)
+                            );
+                        e.colour(Colour::from_rgb(59, 165, 93));
+                        return e;
+                    });
+                    m.components(|c| c.add_action_row(action_row()));
+                    return m;
+                })
+        })
+        .await
+    {
+        println!("Cannot respond to slash command: {}", why);
+    }
+}
+
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -68,52 +122,8 @@ impl EventHandler for Handler {
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
-            let content = match command.data.name.as_str() {
-                "squad" => {
-                    let options = command
-                        .data
-                        .options
-                        .get(0)
-                        .expect("Expected squad size.")
-                        .resolved
-                        .as_ref()
-                        .expect("Expected integer.");
-
-                    if let ApplicationCommandInteractionDataOptionValue::Integer(size) = options {
-                        size.to_string()
-                    } else {
-                        "Please provide a valid size.".to_string()
-                    }
-                },
-                _ => "Not implemented :(".to_string(),
-            };
-
-            if let Err(why) = command
-                .create_interaction_response(&ctx.http, |response| {
-                    response
-                        .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|m| {
-                            m.embed(|e| {
-                                e.title("Assemble your squad!");
-                                e.description(
-                                    format!(
-                                        "✅ React to this message to ready up!\n\
-                                        1️⃣ Use the number reacts to indicate for how many hours you are \
-                                        available.\n\n\
-                                        SquadBot will message you when at least {} people are \
-                                        ready.\n\n", content)
-                                    );
-                                e.colour(Colour::from_rgb(59, 165, 93));
-                                return e;
-                            });
-                            m.components(|c| c.add_action_row(action_row()));
-                            return m;
-                        })
-                })
-                .await
-            {
-                println!("Cannot respond to slash command: {}", why);
-            }
+            let content = parse_squad_command(&command).await;
+            respond(ctx, &command, &content).await;   
         }
     }
 }
