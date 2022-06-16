@@ -115,9 +115,15 @@ impl EventHandler for Handler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::ApplicationCommand(command) = interaction {
-            let content = parse_squad_command(&command).await;
-            let response = respond(ctx, &command, &content).await;
+        match interaction {
+            Interaction::ApplicationCommand(command) => {
+                let content = parse_squad_command(&command).await;
+                let response = respond(ctx, &command, &content).await;
+            },
+            Interaction::MessageComponent(component_interaction) => {
+                println!("{}", component_interaction.message.id);
+            }
+            _ => {}
         }
     }
 }
