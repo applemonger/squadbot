@@ -156,6 +156,17 @@ fn build_squad(
     Ok(())
 }
 
+async fn get_redis_connection(ctx: &Context) -> redis::Connection {
+    println!("Connecting to redis server...");
+    let data_read = ctx.data.read().await;
+    let redis_client_lock = data_read
+        .get::<Redis>()
+        .expect("Expected Redis in TypeMap")
+        .clone();
+    let redis_client = redis_client_lock.read().await;
+    redis_client.get_connection().unwrap()
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -172,16 +183,7 @@ impl EventHandler for Handler {
                 let content = parse_squad_command(&command).await;
                 match respond(&ctx, &command, &content).await {
                     Ok(response) => {
-                        let mut con = {
-                            println!("Connecting to redis server...");
-                            let data_read = ctx.data.read().await;
-                            let redis_client_lock = data_read
-                                .get::<Redis>()
-                                .expect("Expected Redis in TypeMap")
-                                .clone();
-                            let redis_client = redis_client_lock.read().await;
-                            redis_client.get_connection().unwrap()
-                        };
+                        let mut con = get_redis_connection(&ctx).await;
                         if let Err(_) = build_squad(&mut con, &response, &content) {
                             println!("Unable to create squad.");
                         }
