@@ -121,14 +121,22 @@ async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Erro
     .await
 }
 
+fn squad_id(message_id: &String) -> String {
+    format!("squad:{}", message_id)
+}
+
+fn members_id(message_id: &String) -> String {
+    format!("members:{}", message_id)
+}
+
 fn build_squad(
     con: &mut redis::Connection,
     response: &Message,
     size: &String,
 ) -> redis::RedisResult<()> {
     let message_id = response.id.as_u64().to_string();
-    let squad_id = format!("squad:{}", &message_id);
-    let members_id = format!("members:{}", &message_id);
+    let squad_id = squad_id(&message_id);
+    let members_id = members_id(&message_id);
     let capacity: u8 = size.parse().unwrap();
     redis::cmd("HSET")
         .arg(&squad_id)
