@@ -15,7 +15,7 @@ use serenity::model::prelude::ReactionType;
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::framework::standard::macros::group;
 use serenity::framework::standard::{StandardFramework};
-
+use serenity::Error;
 use serenity::utils::Colour;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -97,26 +97,29 @@ async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content:
     }
 }
 
+async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Error>  {
+    ApplicationCommand::create_global_application_command(&ctx.http, |command| {
+        command
+            .name("squad")
+            .description("Create a new squad posting")
+            .create_option(|option| {
+                option
+                    .name("size")
+                    .description("Number from 2 to 10")
+                    .kind(ApplicationCommandOptionType::Integer)
+                    .min_int_value(2)
+                    .max_int_value(10)
+                    .required(true)
+            })
+    })
+    .await
+}
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
-        let squad_command = ApplicationCommand::create_global_application_command(&ctx.http, |command| {
-            command
-                .name("squad")
-                .description("Create a new squad posting")
-                .create_option(|option| {
-                    option
-                        .name("size")
-                        .description("Number from 2 to 10")
-                        .kind(ApplicationCommandOptionType::Integer)
-                        .min_int_value(2)
-                        .max_int_value(10)
-                        .required(true)
-                })
-        })
-        .await;
+        let squad_command = register_squad_command(ctx).await;
         println!("Pushed global slash command: {:#?}", squad_command);
     }
 
