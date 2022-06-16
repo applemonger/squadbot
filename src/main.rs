@@ -62,8 +62,8 @@ async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String 
     }
 }
 
-async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content: &String) {
-    if let Err(why) = command
+async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content: &String) -> Result<(), Error> {
+    command
         .create_interaction_response(&ctx.http, |response| {
             response
                 .kind(InteractionResponseType::ChannelMessageWithSource)
@@ -86,9 +86,6 @@ async fn respond(ctx: Context, command: &ApplicationCommandInteraction, content:
                 })
         })
         .await
-    {
-        println!("Cannot respond to slash command: {}", why);
-    }
 }
 
 async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Error> {
@@ -120,7 +117,7 @@ impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
             let content = parse_squad_command(&command).await;
-            respond(ctx, &command, &content).await;
+            let response = respond(ctx, &command, &content).await;
         }
     }
 }
