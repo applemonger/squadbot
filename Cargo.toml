@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+lazy_static = "1.4.0"
 redis = "0.21.5"
 chrono = "0.4.19"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
@@ -11,5 +12,5 @@ dotenv = "0.15.0"
 
 [dependencies.serenity]
 default-features = false
-features = ["client", "gateway", "rustls_backend", "model", "framework", "standard_framework"]
+features = ["client", "gateway", "rustls_backend", "model", "framework", "standard_framework", "utils"]
 version = "0.11"

@@ -7,16 +7,87 @@ use serenity::model::interactions::application_command::{
     ApplicationCommandOptionType,
     ApplicationCommandInteractionDataOptionValue
 };
+use serenity::model::interactions::message_component::ButtonStyle;
+use serenity::builder::{CreateActionRow, CreateButton};
 use serenity::model::interactions::{Interaction, InteractionResponseType};
+use serenity::model::prelude::ReactionType;
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::framework::standard::macros::group;
 use serenity::framework::standard::{StandardFramework};
-use std::env;
+use serenity::utils::Colour;
+use std::collections::HashMap;
+use std::str::FromStr;
+use std::error::Error as StdError;
+use std::{env, fmt};
 
 #[group]
 struct General;
 
 struct Handler;
+
+#[derive(Debug)]
+enum Options {
+    One,
+    Two,
+    Three,
+    Four
+}
+
+#[derive(Debug)]
+struct ParseComponentError(String);
+
+impl fmt::Display for ParseComponentError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to parse {} as component", self.0)
+    }
+}
+
+impl StdError for ParseComponentError {}
+
+impl fmt::Display for Options {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::One => write!(f, "1"),
+            Self::Two => write!(f, "2"),
+            Self::Three => write!(f, "3"),
+            Self::Four => write!(f, "4"),
+        }
+    }
+}
+
+impl FromStr for Options {
+    type Err = ParseComponentError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "1" => Ok(Options::One),
+            "2" => Ok(Options::Two),
+            "3" => Ok(Options::Three),
+            "4" => Ok(Options::Four),
+            _ => Err(ParseComponentError(s.to_string())),
+        }
+    }
+}
+
+impl Options {
+    fn button(&self) -> CreateButton {
+        let mut b = CreateButton::default();
+        b.custom_id(self.to_string().to_ascii_lowercase());
+        b.label(self);
+        b.style(ButtonStyle::Primary);
+        b
+    }
+
+    fn action_row() -> CreateActionRow {
+        let mut ar = CreateActionRow::default();
+        // We can add up to 5 buttons per action row
+        ar.add_button(Options::One.button());
+        ar.add_button(Options::Two.button());
+        ar.add_button(Options::Three.button());
+        ar.add_button(Options::Four.button());
+        ar
+    }
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -77,8 +148,10 @@ impl EventHandler for Handler {
                                         SquadBot will message you when at least {} people are \
                                         ready.\n\n", content)
                                     );
+                                e.colour(Colour::from_rgb(59, 165, 93));
                                 return e;
                             });
+                            m.components(|c| c.add_action_row(Options::action_row()));
                             return m;
                         })
                 })
