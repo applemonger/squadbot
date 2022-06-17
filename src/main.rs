@@ -65,7 +65,7 @@ fn action_row() -> CreateActionRow {
     ar
 }
 
-async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String {
+async fn parse_command(command: &ApplicationCommandInteraction) -> String {
     match command.data.name.as_str() {
         "squad" => {
             let options = command
@@ -88,6 +88,19 @@ async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String 
 }
 
 async fn respond(
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+    content: &String,
+) -> Result<Message, Error> {
+    match command.data.name.as_str() {
+        "squad" => {
+            respond_squad_command(ctx, command, content).await
+        }
+        _ => Err(serenity::Error::Other("No response available."))
+    }
+}
+
+async fn respond_squad_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
     content: &String,
@@ -224,7 +237,6 @@ fn add_member(
 }
 
 async fn get_redis_connection(ctx: &Context) -> redis::Connection {
-    println!("Connecting to redis server...");
     let data_read = ctx.data.read().await;
     let redis_client_lock = data_read
         .get::<Redis>()
@@ -247,7 +259,7 @@ impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
             Interaction::ApplicationCommand(command) => {
-                let content = parse_squad_command(&command).await;
+                let content = parse_command(&command).await;
                 let command_result = respond(&ctx, &command, &content).await;
                 match command_result {
                     Ok(response) => {
