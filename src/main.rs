@@ -165,15 +165,40 @@ fn build_squad(
     Ok(())
 }
 
-fn add_member(con: &mut redis::Connection, message: &Message, user: &User) -> redis::RedisResult<()> {
+fn add_member(
+    con: &mut redis::Connection,
+    message: &Message,
+    user: &User,
+    expires: u32,
+) -> redis::RedisResult<()> {
     let message_id = message.id.as_u64().to_string();
     let user_id = user.id.as_u64().to_string();
+    let squad_id = squad_id(&message_id);
     let members_id = members_id(&message_id);
     let member_id = member_id(&message_id, &user_id);
-    let members_exists: u8 = redis::cmd("EXISTS").arg(&members_id).query(con).unwrap();
-    println!("{}", members_exists);
-    redis::cmd("SADD").arg(members_id).arg(&member_id);
-    redis::cmd("SET").arg(member_id).arg(user_id);
+    let member_count: u8 = redis::cmd("SCARD").arg(&members_id).query(con).unwrap();
+    if member_count == 0 {
+        redis::cmd("SADD")
+            .arg(&members_id)
+            .arg(&member_id)
+            .query(con)?;
+        redis::cmd("EXPIRE").arg(&members_id).arg(5 * 60 * 60).query(con)?;
+    } else {
+        let capacity: u8 = redis::cmd("HGET").arg(&squad_id).arg("capacity").query(con).unwrap();
+        if member_count < capacity {
+            redis::cmd("SADD")
+                .arg(&members_id)
+                .arg(&member_id)
+                .query(con)?;
+        }
+    }
+    redis::cmd("SET")
+        .arg(member_id)
+        .arg(user_id)
+        .arg("EX")
+        .arg(expires)
+        .query(con)?;
+
     Ok(())
 }
 
@@ -216,8 +241,10 @@ impl EventHandler for Handler {
             Interaction::MessageComponent(component_interaction) => {
                 let message = component_interaction.message;
                 let user = component_interaction.user;
+                let expires: u32 = component_interaction.data.custom_id.parse().unwrap();
+                let expires = expires * 60 * 60;
                 let mut con = get_redis_connection(&ctx).await;
-                add_member(&mut con, &message, &user).unwrap();
+                add_member(&mut con, &message, &user, expires).unwrap();
             }
             _ => {}
         }
