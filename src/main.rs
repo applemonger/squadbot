@@ -181,12 +181,11 @@ impl EventHandler for Handler {
         match interaction {
             Interaction::ApplicationCommand(command) => {
                 let content = parse_squad_command(&command).await;
-                match respond(&ctx, &command, &content).await {
+                let command_result = respond(&ctx, &command, &content).await;
+                match command_result {
                     Ok(response) => {
                         let mut con = get_redis_connection(&ctx).await;
-                        if let Err(_) = build_squad(&mut con, &response, &content) {
-                            println!("Unable to create squad.");
-                        }
+                        build_squad(&mut con, &response, &content).unwrap();
                     }
                     Err(_) => {
                         println!("Unable to respond to command.");
