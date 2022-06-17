@@ -182,9 +182,16 @@ fn add_member(
             .arg(&members_id)
             .arg(&member_id)
             .query(con)?;
-        redis::cmd("EXPIRE").arg(&members_id).arg(5 * 60 * 60).query(con)?;
+        redis::cmd("EXPIRE")
+            .arg(&members_id)
+            .arg(5 * 60 * 60)
+            .query(con)?;
     } else {
-        let capacity: u8 = redis::cmd("HGET").arg(&squad_id).arg("capacity").query(con).unwrap();
+        let capacity: u8 = redis::cmd("HGET")
+            .arg(&squad_id)
+            .arg("capacity")
+            .query(con)
+            .unwrap();
         if member_count < capacity {
             redis::cmd("SADD")
                 .arg(&members_id)
