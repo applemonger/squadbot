@@ -11,6 +11,7 @@ use serenity::model::interactions::application_command::{
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::interactions::{Interaction, InteractionResponseType};
 use serenity::model::prelude::{Message, Ready};
+use serenity::model::user::User;
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::utils::Colour;
 use serenity::Client;
@@ -129,6 +130,10 @@ fn members_id(message_id: &String) -> String {
     format!("members:{}", message_id)
 }
 
+fn member_id(message_id: &String, user_id: &String) -> String {
+    format!("member:{}:{}", message_id, user_id)
+}
+
 fn build_squad(
     con: &mut redis::Connection,
     response: &Message,
@@ -153,6 +158,16 @@ fn build_squad(
         .arg("notified")
         .arg(0)
         .query(con)?;
+    Ok(())
+}
+
+fn add_member(message: &Message, user: &User) -> redis::RedisResult<()> {
+    let message_id = message.id.as_u64().to_string();
+    let user_id = user.id.as_u64().to_string();
+    let members_id = members_id(&message_id);
+    let member_id = member_id(&message_id, &user_id);
+    redis::cmd("SADD").arg(members_id).arg(&member_id);
+    redis::cmd("SET").arg(member_id).arg(user_id);
     Ok(())
 }
 
