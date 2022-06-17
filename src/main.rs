@@ -65,38 +65,20 @@ fn action_row() -> CreateActionRow {
     ar
 }
 
-async fn parse_command(command: &ApplicationCommandInteraction) -> String {
-    match command.data.name.as_str() {
-        "squad" => {
-            let options = command
-                .data
-                .options
-                .get(0)
-                .expect("Expected squad size.")
-                .resolved
-                .as_ref()
-                .expect("Expected integer.");
+async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String {
+    let options = command
+        .data
+        .options
+        .get(0)
+        .expect("Expected squad size.")
+        .resolved
+        .as_ref()
+        .expect("Expected integer.");
 
-            if let ApplicationCommandInteractionDataOptionValue::Integer(size) = options {
-                size.to_string()
-            } else {
-                "Please provide a valid size.".to_string()
-            }
-        }
-        _ => "Not implemented :(".to_string(),
-    }
-}
-
-async fn respond(
-    ctx: &Context,
-    command: &ApplicationCommandInteraction,
-    content: &String,
-) -> Result<Message, Error> {
-    match command.data.name.as_str() {
-        "squad" => {
-            respond_squad_command(ctx, command, content).await
-        }
-        _ => Err(serenity::Error::Other("No response available."))
+    if let ApplicationCommandInteractionDataOptionValue::Integer(size) = options {
+        size.to_string()
+    } else {
+        "Please provide a valid size.".to_string()
     }
 }
 
@@ -246,6 +228,20 @@ async fn get_redis_connection(ctx: &Context) -> redis::Connection {
     redis_client.get_connection().unwrap()
 }
 
+async fn handle_squad_command(ctx: &Context, command: &ApplicationCommandInteraction) {
+    let content = parse_squad_command(&command).await;
+    let command_result = respond_squad_command(&ctx, &command, &content).await;
+    match command_result {
+        Ok(response) => {
+            let mut con = get_redis_connection(&ctx).await;
+            build_squad(&mut con, &response, &content).unwrap();
+        }
+        Err(_) => {
+            println!("Unable to respond to command.");
+        }
+    }
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -259,15 +255,12 @@ impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
             Interaction::ApplicationCommand(command) => {
-                let content = parse_command(&command).await;
-                let command_result = respond(&ctx, &command, &content).await;
-                match command_result {
-                    Ok(response) => {
-                        let mut con = get_redis_connection(&ctx).await;
-                        build_squad(&mut con, &response, &content).unwrap();
-                    }
-                    Err(_) => {
-                        println!("Unable to respond to command.");
+                match command.data.name.as_str() {
+                    "squad" => {
+                        handle_squad_command(&ctx, &command).await;          
+                    },
+                    _ => {
+                        println!("Not implemented.");
                     }
                 }
             }
