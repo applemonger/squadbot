@@ -158,14 +158,20 @@ fn build_squad(
         .arg("notified")
         .arg(0)
         .query(con)?;
+    redis::cmd("EXPIRE")
+        .arg(&squad_id)
+        .arg(5 * 60 * 60)
+        .query(con)?;
     Ok(())
 }
 
-fn add_member(message: &Message, user: &User) -> redis::RedisResult<()> {
+fn add_member(con: &mut redis::Connection, message: &Message, user: &User) -> redis::RedisResult<()> {
     let message_id = message.id.as_u64().to_string();
     let user_id = user.id.as_u64().to_string();
     let members_id = members_id(&message_id);
     let member_id = member_id(&message_id, &user_id);
+    let members_exists: u8 = redis::cmd("EXISTS").arg(&members_id).query(con).unwrap();
+    println!("{}", members_exists);
     redis::cmd("SADD").arg(members_id).arg(&member_id);
     redis::cmd("SET").arg(member_id).arg(user_id);
     Ok(())
@@ -208,7 +214,10 @@ impl EventHandler for Handler {
                 }
             }
             Interaction::MessageComponent(component_interaction) => {
-                println!("{}", component_interaction.message.id);
+                let message = component_interaction.message;
+                let user = component_interaction.user;
+                let mut con = get_redis_connection(&ctx).await;
+                add_member(&mut con, &message, &user).unwrap();
             }
             _ => {}
         }
