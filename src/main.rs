@@ -19,6 +19,7 @@ use std::env;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use typemap_rev::TypeMapKey;
+use serenity::model::prelude::message_component::MessageComponentInteraction;
 
 #[group]
 struct General;
@@ -239,6 +240,22 @@ async fn handle_squad_command(ctx: &Context, command: &ApplicationCommandInterac
     }
 }
 
+async fn handle_add_member(ctx: &Context, interaction: &MessageComponentInteraction, expires: u8) {
+    let message_id = interaction.message.id.as_u64().to_string();
+    let user_id = interaction.user.id.as_u64().to_string();
+    let seconds: u32 = (expires * 60 * 60).into();
+    let mut con = get_redis_connection(&ctx).await;
+    add_member(&mut con, &message_id, &user_id, seconds).unwrap();
+}
+
+fn parse_message_component_interaction_id(interaction: &MessageComponentInteraction) -> ButtonChoice {
+    let id = interaction.data.custom_id.clone();
+    match id.parse() {
+        Ok(expires) => ButtonChoice::Hours(expires),
+        Err(_) => ButtonChoice::Other(id)
+    }
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -261,13 +278,16 @@ impl EventHandler for Handler {
                     }
                 }
             }
-            Interaction::MessageComponent(component_interaction) => {
-                let message_id = component_interaction.message.id.as_u64().to_string();
-                let user_id = component_interaction.user.id.as_u64().to_string();
-                let expires: u32 = component_interaction.data.custom_id.parse().unwrap();
-                let expires = expires * 60 * 60;
-                let mut con = get_redis_connection(&ctx).await;
-                add_member(&mut con, &message_id, &user_id, expires).unwrap();
+            Interaction::MessageComponent(component_interaction) => {                
+                match parse_message_component_interaction_id(&component_interaction) {
+                    ButtonChoice::Hours(expires) => {
+                        handle_add_member(&ctx, &component_interaction, expires).await;
+                    },
+                    ButtonChoice::Other(other) => {
+                        println!("{}", other);
+                    }
+                }
+                
             }
             _ => {}
         }
