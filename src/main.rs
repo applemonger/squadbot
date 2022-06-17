@@ -11,7 +11,6 @@ use serenity::model::interactions::application_command::{
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::interactions::{Interaction, InteractionResponseType};
 use serenity::model::prelude::{Message, Ready};
-use serenity::model::user::User;
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::utils::Colour;
 use serenity::Client;
@@ -145,10 +144,9 @@ fn member_id(message_id: &String, user_id: &String) -> String {
 
 fn build_squad(
     con: &mut redis::Connection,
-    response: &Message,
     size: &String,
+    message_id: &String,
 ) -> redis::RedisResult<()> {
-    let message_id = response.id.as_u64().to_string();
     let squad_id = squad_id(&message_id);
     let members_id = members_id(&message_id);
     let capacity: u8 = size.parse().unwrap();
@@ -176,12 +174,10 @@ fn build_squad(
 
 fn add_member(
     con: &mut redis::Connection,
-    message: &Message,
-    user: &User,
+    message_id: &String,
+    user_id: &String,
     expires: u32,
 ) -> redis::RedisResult<()> {
-    let message_id = message.id.as_u64().to_string();
-    let user_id = user.id.as_u64().to_string();
     let squad_id = squad_id(&message_id);
     let members_id = members_id(&message_id);
     let member_id = member_id(&message_id, &user_id);
@@ -229,12 +225,13 @@ async fn get_redis_connection(ctx: &Context) -> redis::Connection {
 }
 
 async fn handle_squad_command(ctx: &Context, command: &ApplicationCommandInteraction) {
-    let content = parse_squad_command(&command).await;
-    let command_result = respond_squad_command(&ctx, &command, &content).await;
+    let capacity = parse_squad_command(&command).await;
+    let command_result = respond_squad_command(&ctx, &command, &capacity).await;
     match command_result {
         Ok(response) => {
             let mut con = get_redis_connection(&ctx).await;
-            build_squad(&mut con, &response, &content).unwrap();
+            let message_id = response.id.as_u64().to_string();
+            build_squad(&mut con, &message_id, &capacity).unwrap();
         }
         Err(_) => {
             println!("Unable to respond to command.");
@@ -265,12 +262,12 @@ impl EventHandler for Handler {
                 }
             }
             Interaction::MessageComponent(component_interaction) => {
-                let message = component_interaction.message;
-                let user = component_interaction.user;
+                let message_id = component_interaction.message.id.as_u64().to_string();
+                let user_id = component_interaction.user.id.as_u64().to_string();
                 let expires: u32 = component_interaction.data.custom_id.parse().unwrap();
                 let expires = expires * 60 * 60;
                 let mut con = get_redis_connection(&ctx).await;
-                add_member(&mut con, &message, &user, expires).unwrap();
+                add_member(&mut con, &message_id, &user_id, expires).unwrap();
             }
             _ => {}
         }
