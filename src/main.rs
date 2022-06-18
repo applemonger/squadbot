@@ -47,6 +47,9 @@ impl EventHandler for Handler {
                         println!("{}", other);
                     }
                 }
+                if let Err(why) = component_interaction.defer(&ctx.http).await {
+                    println!("{:?}", why);
+                }
             }
             _ => {}
         }
