@@ -4,6 +4,7 @@ use serenity::prelude::Context;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use typemap_rev::TypeMapKey;
+use std::collections::HashMap;
 
 pub struct Redis;
 
@@ -123,17 +124,18 @@ pub fn get_capacity(con: &mut redis::Connection, message_id: &String) -> redis::
 pub fn get_members(
     con: &mut redis::Connection,
     message_id: &String,
-) -> redis::RedisResult<Vec<UserId>> {
+) -> redis::RedisResult<HashMap<UserId, u64>> {
     let members_id = members_id(&message_id);
     let redis_members: Vec<String> = redis::cmd("SMEMBERS")
         .arg(&members_id)
         .clone()
         .iter::<String>(con)?
         .collect();
-    let mut members = Vec::new();
+    let mut ttls = HashMap::new();
     for member in redis_members {
-        let user_id: UserId = redis::cmd("GET").arg(member).query::<u64>(con)?.into();
-        members.push(user_id);
+        let user_id: UserId = redis::cmd("GET").arg(&member).query::<u64>(con)?.into();
+        let ttl: u64 = redis::cmd("TTL").arg(&member).query::<u64>(con)?;
+        ttls.insert(user_id, ttl);
     }
-    Ok(members)
+    Ok(ttls)
 }
