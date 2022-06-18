@@ -1,6 +1,7 @@
 use crate::redis_core;
 use serenity::builder::{
     CreateActionRow, CreateButton, CreateInteractionResponseData, EditMessage,
+    CreateComponents
 };
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::utils::Colour;
@@ -53,6 +54,17 @@ fn options_row() -> CreateActionRow {
     ar
 }
 
+fn action_rows(c: &mut CreateComponents) -> &mut CreateComponents {
+    c.add_action_row(hours_selection_row_1());
+    c.add_action_row(hours_selection_row_2());
+    c.add_action_row(options_row());
+    c
+}
+
+fn get_colour() -> Colour {
+    Colour::from_rgb(59, 165, 93)
+}
+
 fn create_description(capacity: &String) -> String {
     format!(
         "✅ React to this message to ready up!\n\
@@ -84,15 +96,10 @@ pub fn build_embed<'a, 'b>(
     m.embed(|e| {
         e.title("Assemble your squad!");
         e.description(create_description(&capacity));
-        e.colour(Colour::from_rgb(59, 165, 93));
+        e.colour(get_colour());
         return e;
     });
-    m.components(|c| {
-        c.add_action_row(hours_selection_row_1());
-        c.add_action_row(hours_selection_row_2());
-        c.add_action_row(options_row());
-        c
-    });
+    m.components(|c| action_rows(c));
     m
 }
 
@@ -109,14 +116,9 @@ pub fn update_embed<'a, 'b>(
             &capacity.to_string(),
             &message_id,
         ));
-        e.colour(Colour::from_rgb(59, 165, 93));
+        e.colour(get_colour());
         return e;
     });
-    m.components(|c| {
-        c.add_action_row(hours_selection_row_1());
-        c.add_action_row(hours_selection_row_2());
-        c.add_action_row(options_row());
-        c
-    });
+    m.components(|c| action_rows(c));
     m
 }
