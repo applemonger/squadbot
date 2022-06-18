@@ -86,11 +86,21 @@ pub fn create_description_with_members(
     let mut roster = String::new();
     for (key, value) in &members {
         let mention = format!("{}", Mention::from(*key));
-        let ttl = value.to_string();
+        let ttl = format_ttl(*value);
         let line = &format!("{} available for {}\n", mention, ttl)[..];
         roster.push_str(line);
     }
     format!("{}**Current Squad**\n{}", base_description, roster)
+}
+
+fn format_ttl(ttl: u64) -> String {
+    let minutes = ttl / 60;
+    let hours = minutes / 60;
+    let minutes = minutes % 60;
+    match hours {
+        0 => format!("{}m", minutes),
+        _ => format!("{}h {}m", hours, minutes)
+    }
 }
 
 pub fn build_embed<'a, 'b>(
