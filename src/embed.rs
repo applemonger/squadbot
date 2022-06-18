@@ -25,13 +25,29 @@ fn button(choice: ButtonChoice) -> CreateButton {
     b
 }
 
-fn action_row() -> CreateActionRow {
+fn hours_selection_row_1() -> CreateActionRow {
     let mut ar = CreateActionRow::default();
     ar.add_button(button(ButtonChoice::Hours(1)));
     ar.add_button(button(ButtonChoice::Hours(2)));
     ar.add_button(button(ButtonChoice::Hours(3)));
     ar.add_button(button(ButtonChoice::Hours(4)));
-    ar.add_button(button(ButtonChoice::Other(String::from("Leave"))));
+    ar.add_button(button(ButtonChoice::Hours(5)));
+    ar
+}
+
+fn hours_selection_row_2() -> CreateActionRow {
+    let mut ar = CreateActionRow::default();
+    ar.add_button(button(ButtonChoice::Hours(6)));
+    ar.add_button(button(ButtonChoice::Hours(7)));
+    ar.add_button(button(ButtonChoice::Hours(8)));
+    ar.add_button(button(ButtonChoice::Hours(9)));
+    ar.add_button(button(ButtonChoice::Hours(10)));
+    ar
+}
+
+fn options_row() -> CreateActionRow {
+    let mut ar = CreateActionRow::default();
+    ar.add_button(button(ButtonChoice::Other(String::from("Leave Squad"))));
     ar
 }
 
@@ -54,6 +70,11 @@ pub fn build_embed<'a, 'b>(
         e.colour(Colour::from_rgb(59, 165, 93));
         return e;
     });
-    m.components(|c| c.add_action_row(action_row()));
+    m.components(|c| {
+        c.add_action_row(hours_selection_row_1());
+        c.add_action_row(hours_selection_row_2());
+        c.add_action_row(options_row());
+        c
+    });
     m
 }
