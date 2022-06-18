@@ -1,12 +1,11 @@
 use crate::redis_core;
 use serenity::builder::{
-    CreateActionRow, CreateButton, CreateInteractionResponseData, EditMessage,
-    CreateComponents
+    CreateActionRow, CreateButton, CreateComponents, CreateInteractionResponseData, EditMessage,
 };
-use serenity::model::interactions::message_component::ButtonStyle;
-use serenity::utils::Colour;
-use serenity::model::mention::Mention;
 use serenity::model::id::UserId;
+use serenity::model::interactions::message_component::ButtonStyle;
+use serenity::model::mention::Mention;
+use serenity::utils::Colour;
 
 pub enum ButtonChoice {
     Hours(u8),
@@ -82,12 +81,7 @@ pub fn create_description_with_members(
     message_id: &String,
 ) -> String {
     let base_description = create_description(&capacity);
-    let members = redis_core::get_members(con, &message_id);
-    let members: Vec<UserId> = members
-        .iter()
-        .map(|m| m.parse().unwrap())
-        .map(|m: UserId| m.into())
-        .collect();
+    let members: Vec<UserId> = redis_core::get_members(con, &message_id);
     let roster: String = members
         .iter()
         .map(|s| Mention::from(*s))

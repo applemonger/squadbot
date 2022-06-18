@@ -1,4 +1,5 @@
 use redis;
+use serenity::model::id::UserId;
 use serenity::prelude::Context;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -127,7 +128,7 @@ pub fn get_capacity(con: &mut redis::Connection, message_id: &String) -> u8 {
         .unwrap()
 }
 
-pub fn get_members<'a>(con: &'a mut redis::Connection, message_id: &'a String) -> Vec<String> {
+pub fn get_members<'a>(con: &'a mut redis::Connection, message_id: &'a String) -> Vec<UserId> {
     let members_id = members_id(&message_id);
     let mut cmd = redis::cmd("SMEMBERS");
     let redis_members: Vec<String> = cmd
@@ -139,7 +140,11 @@ pub fn get_members<'a>(con: &'a mut redis::Connection, message_id: &'a String) -
         .collect();
     let mut members = Vec::new();
     for member in redis_members {
-        let user_id = redis::cmd("GET").arg(member).query(con).unwrap();
+        let user_id: UserId = redis::cmd("GET")
+            .arg(member)
+            .query::<u64>(con)
+            .unwrap()
+            .into();
         members.push(user_id);
     }
     members

@@ -14,11 +14,8 @@ pub async fn handle_add_member(
     let mut con = redis_core::get_redis_connection(&ctx).await;
     redis_core::add_member(&mut con, &message_id, &user_id, seconds).unwrap();
     let capacity: u8 = redis_core::get_capacity(&mut con, &message_id);
-    let description = embed::create_description_with_members(
-        &mut con,
-        &capacity.to_string(),
-        &message_id,
-    );
+    let description =
+        embed::create_description_with_members(&mut con, &capacity.to_string(), &message_id);
     if let Err(why) = interaction
         .channel_id
         .edit_message(&ctx, interaction.message.id, |m| {
