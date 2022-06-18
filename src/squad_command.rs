@@ -31,11 +31,12 @@ async fn respond_squad_command(
     command: &ApplicationCommandInteraction,
     capacity: &String,
 ) -> Result<Message, Error> {
+    let description = embed::create_description(&capacity);
     command
         .create_interaction_response(&ctx.http, |response| {
             response
                 .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|m| embed::build_embed(m, &capacity))
+                .interaction_response_data(|m| embed::build_embed(m, description))
         })
         .await?;
     command.get_interaction_response(&ctx.http).await

@@ -65,7 +65,7 @@ fn get_colour() -> Colour {
     Colour::from_rgb(59, 165, 93)
 }
 
-fn create_description(capacity: &String) -> String {
+pub fn create_description(capacity: &String) -> String {
     format!(
         "✅ React to this message to ready up!\n\
         1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
@@ -74,7 +74,7 @@ fn create_description(capacity: &String) -> String {
     )
 }
 
-fn create_description_with_members(
+pub fn create_description_with_members(
     con: &mut redis::Connection,
     capacity: &String,
     message_id: &String,
@@ -91,13 +91,13 @@ fn create_description_with_members(
 
 pub fn build_embed<'a, 'b>(
     m: &'b mut CreateInteractionResponseData<'a>,
-    capacity: &String,
+    description: String,
 ) -> &'b mut CreateInteractionResponseData<'a> {
     m.embed(|e| {
         e.title("Assemble your squad!");
-        e.description(create_description(&capacity));
+        e.description(description);
         e.colour(get_colour());
-        return e;
+        e
     });
     m.components(|c| action_rows(c));
     m
@@ -105,19 +105,13 @@ pub fn build_embed<'a, 'b>(
 
 pub fn update_embed<'a, 'b>(
     m: &'b mut EditMessage<'a>,
-    con: &mut redis::Connection,
-    message_id: &String,
+    description: String,
 ) -> &'b mut EditMessage<'a> {
-    let capacity: u8 = redis_core::get_capacity(con, &message_id);
     m.embed(|e| {
         e.title("Assemble your squad!");
-        e.description(create_description_with_members(
-            con,
-            &capacity.to_string(),
-            &message_id,
-        ));
+        e.description(description);
         e.colour(get_colour());
-        return e;
+        e
     });
     m.components(|c| action_rows(c));
     m
