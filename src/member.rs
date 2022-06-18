@@ -13,12 +13,18 @@ pub async fn handle_add_member(
     let seconds: u32 = u32::from(expires) * 60 * 60;
     let mut con = redis_core::get_redis_connection(&ctx).await;
     redis_core::add_member(&mut con, &message_id, &user_id, seconds).unwrap();
+    if let Err(why) = interaction
+        .channel_id
+        .edit_message(&ctx, interaction.message.id, |m| {
+            embed::update_embed(m, &mut con, &message_id)
+        })
+        .await
+    {
+        println!("Error modifying posting: {:?}", why);
+    }
 }
 
-pub async fn handle_delete_member(
-    ctx: &Context,
-    interaction: &MessageComponentInteraction,
-) {
+pub async fn handle_delete_member(ctx: &Context, interaction: &MessageComponentInteraction) {
     let message_id = interaction.message.id.as_u64().to_string();
     let user_id = interaction.user.id.as_u64().to_string();
     let mut con = redis_core::get_redis_connection(&ctx).await;

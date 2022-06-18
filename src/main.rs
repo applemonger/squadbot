@@ -8,8 +8,8 @@ use serenity::Client;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-mod member;
 mod embed;
+mod member;
 mod redis_core;
 mod squad_command;
 

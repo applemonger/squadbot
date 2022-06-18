@@ -73,18 +73,12 @@ pub fn add_member(
     let member_id = member_id(&message_id, &user_id);
     let member_count: u8 = redis::cmd("SCARD").arg(&members_id).query(con).unwrap();
     if member_count == 0 {
-        let ttl: u32 = redis::cmd("TTL")
-            .arg(&squad_id)
-            .query(con)
-            .unwrap();
+        let ttl: u32 = redis::cmd("TTL").arg(&squad_id).query(con).unwrap();
         redis::cmd("SADD")
             .arg(&members_id)
             .arg(&member_id)
             .query(con)?;
-        redis::cmd("EXPIRE")
-            .arg(&members_id)
-            .arg(ttl)
-            .query(con)?;
+        redis::cmd("EXPIRE").arg(&members_id).arg(ttl).query(con)?;
     } else {
         let capacity: u8 = redis::cmd("HGET")
             .arg(&squad_id)
@@ -119,9 +113,34 @@ pub fn delete_member(
         .arg(&members_id)
         .arg(&member_id)
         .query(con)?;
-    redis::cmd("DEL")
-        .arg(&member_id)
-        .query(con)?;
+    redis::cmd("DEL").arg(&member_id).query(con)?;
 
     Ok(())
+}
+
+pub fn get_capacity(con: &mut redis::Connection, message_id: &String) -> u8 {
+    let squad_id = squad_id(&message_id);
+    redis::cmd("HGET")
+        .arg(&squad_id)
+        .arg("capacity")
+        .query(con)
+        .unwrap()
+}
+
+pub fn get_members<'a>(con: &'a mut redis::Connection, message_id: &'a String) -> Vec<String> {
+    let members_id = members_id(&message_id);
+    let mut cmd = redis::cmd("SMEMBERS");
+    let redis_members: Vec<String> = cmd
+        .arg(&members_id)
+        .clone()
+        .iter(con)
+        .unwrap()
+        .map(|x: String| x.to_string())
+        .collect();
+    let mut members = Vec::new();
+    for member in redis_members {
+        let user_id = redis::cmd("GET").arg(member).query(con).unwrap();
+        members.push(user_id);
+    }
+    members
 }

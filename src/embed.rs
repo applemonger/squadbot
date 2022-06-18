@@ -1,5 +1,7 @@
-use serenity::builder::CreateInteractionResponseData;
-use serenity::builder::{CreateActionRow, CreateButton};
+use crate::redis_core;
+use serenity::builder::{
+    CreateActionRow, CreateButton, CreateInteractionResponseData, EditMessage,
+};
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::utils::Colour;
 
@@ -51,22 +53,62 @@ fn options_row() -> CreateActionRow {
     ar
 }
 
-fn create_description(content: &String) -> String {
+fn create_description(capacity: &String) -> String {
     format!(
         "✅ React to this message to ready up!\n\
         1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
         SquadBot will message you when at least {} people are ready.\n\n",
-        content
+        capacity
     )
+}
+
+fn create_description_with_members(
+    con: &mut redis::Connection,
+    capacity: &String,
+    message_id: &String,
+) -> String {
+    let base_description = create_description(&capacity);
+    let members = redis_core::get_members(con, &message_id);
+    let mut roster = String::new();
+    for member in members {
+        roster.push_str(&member);
+        roster.push_str("\n");
+    }
+    format!("{}**Current Squad**\n{}", base_description, roster)
 }
 
 pub fn build_embed<'a, 'b>(
     m: &'b mut CreateInteractionResponseData<'a>,
-    content: &String,
+    capacity: &String,
 ) -> &'b mut CreateInteractionResponseData<'a> {
     m.embed(|e| {
         e.title("Assemble your squad!");
-        e.description(create_description(&content));
+        e.description(create_description(&capacity));
+        e.colour(Colour::from_rgb(59, 165, 93));
+        return e;
+    });
+    m.components(|c| {
+        c.add_action_row(hours_selection_row_1());
+        c.add_action_row(hours_selection_row_2());
+        c.add_action_row(options_row());
+        c
+    });
+    m
+}
+
+pub fn update_embed<'a, 'b>(
+    m: &'b mut EditMessage<'a>,
+    con: &mut redis::Connection,
+    message_id: &String,
+) -> &'b mut EditMessage<'a> {
+    let capacity: u8 = redis_core::get_capacity(con, &message_id);
+    m.embed(|e| {
+        e.title("Assemble your squad!");
+        e.description(create_description_with_members(
+            con,
+            &capacity.to_string(),
+            &message_id,
+        ));
         e.colour(Colour::from_rgb(59, 165, 93));
         return e;
     });

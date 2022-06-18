@@ -29,13 +29,13 @@ async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String 
 async fn respond_squad_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
-    content: &String,
+    capacity: &String,
 ) -> Result<Message, Error> {
     command
         .create_interaction_response(&ctx.http, |response| {
             response
                 .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|m| embed::build_embed(m, &content))
+                .interaction_response_data(|m| embed::build_embed(m, &capacity))
         })
         .await?;
     command.get_interaction_response(&ctx.http).await
