@@ -13,5 +13,5 @@ dotenv = "0.15.0"
 
 [dependencies.serenity]
 default-features = false
-features = ["client", "gateway", "rustls_backend", "model", "framework", "standard_framework", "utils"]
+features = ["client", "gateway", "rustls_backend", "model", "framework", "standard_framework", "utils", "cache"]
 version = "0.11"

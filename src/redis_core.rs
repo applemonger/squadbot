@@ -36,6 +36,7 @@ fn member_id(message_id: &String, user_id: &String) -> String {
 
 pub fn build_squad(
     con: &mut redis::Connection,
+    channel_id: &String,
     message_id: &String,
     size: &String,
 ) -> redis::RedisResult<()> {
@@ -46,6 +47,11 @@ pub fn build_squad(
         .arg(&squad_id)
         .arg("members")
         .arg(members_id)
+        .query(con)?;
+    redis::cmd("HSET")
+        .arg(&squad_id)
+        .arg("channel")
+        .arg(&channel_id)
         .query(con)?;
     redis::cmd("HSET")
         .arg(&squad_id)

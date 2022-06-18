@@ -2,11 +2,15 @@ use dotenv::dotenv;
 use serenity::async_trait;
 use serenity::framework::standard::macros::group;
 use serenity::framework::standard::StandardFramework;
-use serenity::model::prelude::{Interaction, Ready};
+use serenity::model::prelude::Interaction;
+use serenity::model::gateway::Ready;
+use serenity::model::id::GuildId;
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::Client;
 use std::env;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 use tokio::sync::RwLock;
 mod embed;
 mod member;
@@ -16,7 +20,9 @@ mod squad_command;
 #[group]
 struct General;
 
-struct Handler;
+struct Handler {
+    is_loop_running: AtomicBool
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -54,6 +60,20 @@ impl EventHandler for Handler {
             _ => {}
         }
     }
+
+    async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
+        let ctx = Arc::new(ctx);
+        if !self.is_loop_running.load(Ordering::Relaxed) {
+            let _ctx1 = Arc::clone(&ctx);
+            tokio::spawn(async move {
+                loop {
+                    /* Update embeds here */
+                    tokio::time::sleep(Duration::from_secs(10)).await;
+                }
+            });
+            self.is_loop_running.swap(true, Ordering::Relaxed);
+        }
+    }
 }
 
 #[tokio::main]
@@ -75,7 +95,9 @@ async fn main() {
 
     // Build client
     let mut client = Client::builder(&token, intents)
-        .event_handler(Handler)
+        .event_handler(Handler {
+            is_loop_running: AtomicBool::new(false),
+        })
         .framework(framework)
         .await
         .expect("Client creation failed.");

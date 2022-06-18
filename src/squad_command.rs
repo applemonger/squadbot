@@ -63,11 +63,12 @@ pub async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, 
 pub async fn handle_squad_command(ctx: &Context, command: &ApplicationCommandInteraction) {
     let capacity = parse_squad_command(&command).await;
     let command_result = respond_squad_command(&ctx, &command, &capacity).await;
+    let channel_id = command.channel_id.as_u64().to_string();
     match command_result {
         Ok(response) => {
             let mut con = redis_core::get_redis_connection(&ctx).await;
             let message_id = response.id.as_u64().to_string();
-            redis_core::build_squad(&mut con, &message_id, &capacity).unwrap();
+            redis_core::build_squad(&mut con, &channel_id, &message_id, &capacity).unwrap();
         }
         Err(_) => {
             println!("Unable to respond to command.");
