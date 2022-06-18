@@ -1,4 +1,3 @@
-
 use redis;
 use serenity::prelude::Context;
 use std::sync::Arc;

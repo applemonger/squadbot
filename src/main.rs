@@ -9,6 +9,7 @@ use serenity::model::interactions::application_command::{
 };
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::interactions::{Interaction, InteractionResponseType};
+use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::model::prelude::{Message, Ready};
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::utils::Colour;
@@ -17,7 +18,6 @@ use serenity::Error;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serenity::model::prelude::message_component::MessageComponentInteraction;
 mod redis_core;
 
 #[group]
@@ -25,10 +25,9 @@ struct General;
 
 struct Handler;
 
-
 enum ButtonChoice {
     Hours(u8),
-    Other(String)
+    Other(String),
 }
 
 fn button(choice: ButtonChoice) -> CreateButton {
@@ -38,7 +37,7 @@ fn button(choice: ButtonChoice) -> CreateButton {
             b.custom_id(hours.to_string().to_ascii_lowercase());
             b.label(hours.to_string());
             b.style(ButtonStyle::Primary);
-        },
+        }
         ButtonChoice::Other(s) => {
             b.custom_id(&s);
             b.label(&s);
@@ -148,11 +147,13 @@ async fn handle_add_member(ctx: &Context, interaction: &MessageComponentInteract
     redis_core::add_member(&mut con, &message_id, &user_id, seconds).unwrap();
 }
 
-fn parse_message_component_interaction_id(interaction: &MessageComponentInteraction) -> ButtonChoice {
+fn parse_message_component_interaction_id(
+    interaction: &MessageComponentInteraction,
+) -> ButtonChoice {
     let id = interaction.data.custom_id.clone();
     match id.parse() {
         Ok(expires) => ButtonChoice::Hours(expires),
-        Err(_) => ButtonChoice::Other(id)
+        Err(_) => ButtonChoice::Other(id),
     }
 }
 
@@ -168,26 +169,23 @@ impl EventHandler for Handler {
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
-            Interaction::ApplicationCommand(command) => {
-                match command.data.name.as_str() {
-                    "squad" => {
-                        handle_squad_command(&ctx, &command).await;          
-                    },
-                    _ => {
-                        println!("Not implemented.");
-                    }
+            Interaction::ApplicationCommand(command) => match command.data.name.as_str() {
+                "squad" => {
+                    handle_squad_command(&ctx, &command).await;
                 }
-            }
-            Interaction::MessageComponent(component_interaction) => {                
+                _ => {
+                    println!("Not implemented.");
+                }
+            },
+            Interaction::MessageComponent(component_interaction) => {
                 match parse_message_component_interaction_id(&component_interaction) {
                     ButtonChoice::Hours(expires) => {
                         handle_add_member(&ctx, &component_interaction, expires).await;
-                    },
+                    }
                     ButtonChoice::Other(other) => {
                         println!("{}", other);
                     }
                 }
-                
             }
             _ => {}
         }
