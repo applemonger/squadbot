@@ -128,15 +128,13 @@ pub fn get_members(con: &mut redis::Connection, message_id: &String) -> redis::R
     let redis_members: Vec<String> = redis::cmd("SMEMBERS")
         .arg(&members_id)
         .clone()
-        .iter::<String>(con)
-        .unwrap()
+        .iter::<String>(con)?
         .collect();
     let mut members = Vec::new();
     for member in redis_members {
         let user_id: UserId = redis::cmd("GET")
             .arg(member)
-            .query::<u64>(con)
-            .unwrap()
+            .query::<u64>(con)?
             .into();
         members.push(user_id);
     }
