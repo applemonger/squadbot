@@ -2,7 +2,6 @@ use dotenv::dotenv;
 use serenity::async_trait;
 use serenity::framework::standard::macros::group;
 use serenity::framework::standard::StandardFramework;
-use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::model::prelude::{Interaction, Ready};
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::Client;
@@ -12,30 +11,12 @@ use tokio::sync::RwLock;
 mod embed;
 mod redis_core;
 mod squad_command;
+mod add_member;
 
 #[group]
 struct General;
 
 struct Handler;
-
-
-async fn handle_add_member(ctx: &Context, interaction: &MessageComponentInteraction, expires: u8) {
-    let message_id = interaction.message.id.as_u64().to_string();
-    let user_id = interaction.user.id.as_u64().to_string();
-    let seconds: u32 = u32::from(expires) * 60 * 60;
-    let mut con = redis_core::get_redis_connection(&ctx).await;
-    redis_core::add_member(&mut con, &message_id, &user_id, seconds).unwrap();
-}
-
-fn parse_message_component_interaction_id(
-    interaction: &MessageComponentInteraction,
-) -> embed::ButtonChoice {
-    let id = interaction.data.custom_id.clone();
-    match id.parse() {
-        Ok(expires) => embed::ButtonChoice::Hours(expires),
-        Err(_) => embed::ButtonChoice::Other(id),
-    }
-}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -58,9 +39,9 @@ impl EventHandler for Handler {
                 }
             },
             Interaction::MessageComponent(component_interaction) => {
-                match parse_message_component_interaction_id(&component_interaction) {
+                match add_member::parse_component_id(&component_interaction) {
                     embed::ButtonChoice::Hours(expires) => {
-                        handle_add_member(&ctx, &component_interaction, expires).await;
+                        add_member::handle_add_member(&ctx, &component_interaction, expires).await;
                     }
                     embed::ButtonChoice::Other(other) => {
                         println!("{}", other);
