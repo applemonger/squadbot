@@ -81,7 +81,7 @@ pub fn create_description_with_members(
     message_id: &String,
 ) -> String {
     let base_description = create_description(&capacity);
-    let members: Vec<UserId> = redis_core::get_members(con, &message_id);
+    let members: Vec<UserId> = redis_core::get_members(con, &message_id).unwrap();
     let roster: String = members
         .iter()
         .map(|s| Mention::from(*s))
