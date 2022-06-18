@@ -99,7 +99,7 @@ fn format_ttl(ttl: u64) -> String {
     let minutes = minutes % 60;
     match hours {
         0 => format!("{}m", minutes),
-        _ => format!("{}h {}m", hours, minutes)
+        _ => format!("{}h {}m", hours, minutes),
     }
 }
 

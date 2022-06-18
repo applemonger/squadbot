@@ -1,10 +1,10 @@
 use redis;
 use serenity::model::id::UserId;
 use serenity::prelude::Context;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use typemap_rev::TypeMapKey;
-use std::collections::HashMap;
 
 pub struct Redis;
 
