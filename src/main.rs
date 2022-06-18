@@ -1,13 +1,11 @@
 use dotenv::dotenv;
 use serenity::async_trait;
-use serenity::builder::{CreateActionRow, CreateButton};
 use serenity::framework::standard::macros::group;
 use serenity::framework::standard::StandardFramework;
 use serenity::model::interactions::application_command::{
     ApplicationCommand, ApplicationCommandInteraction,
     ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType,
 };
-use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::interactions::{Interaction, InteractionResponseType};
 use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::model::prelude::{Message, Ready};
@@ -18,45 +16,13 @@ use serenity::Error;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+mod embed;
 mod redis_core;
 
 #[group]
 struct General;
 
 struct Handler;
-
-enum ButtonChoice {
-    Hours(u8),
-    Other(String),
-}
-
-fn button(choice: ButtonChoice) -> CreateButton {
-    let mut b = CreateButton::default();
-    match choice {
-        ButtonChoice::Hours(hours) => {
-            b.custom_id(hours.to_string().to_ascii_lowercase());
-            b.label(hours.to_string());
-            b.style(ButtonStyle::Primary);
-        }
-        ButtonChoice::Other(s) => {
-            b.custom_id(&s);
-            b.label(&s);
-            b.style(ButtonStyle::Danger);
-        }
-    }
-    b
-}
-
-fn action_row() -> CreateActionRow {
-    let mut ar = CreateActionRow::default();
-    // We can add up to 5 buttons per action row
-    ar.add_button(button(ButtonChoice::Hours(1)));
-    ar.add_button(button(ButtonChoice::Hours(2)));
-    ar.add_button(button(ButtonChoice::Hours(3)));
-    ar.add_button(button(ButtonChoice::Hours(4)));
-    ar.add_button(button(ButtonChoice::Other("X".to_string())));
-    ar
-}
 
 async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String {
     let options = command
@@ -75,15 +41,6 @@ async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String 
     }
 }
 
-fn create_description(content: &String) -> String {
-    format!(
-        "✅ React to this message to ready up!\n\
-        1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
-        SquadBot will message you when at least {} people are ready.\n\n",
-        content
-    )
-}
-
 async fn respond_squad_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
@@ -96,11 +53,11 @@ async fn respond_squad_command(
                 .interaction_response_data(|m| {
                     m.embed(|e| {
                         e.title("Assemble your squad!");
-                        e.description(create_description(&content));
+                        e.description(embed::create_description(&content));
                         e.colour(Colour::from_rgb(59, 165, 93));
                         return e;
                     });
-                    m.components(|c| c.add_action_row(action_row()));
+                    m.components(|c| c.add_action_row(embed::action_row()));
                     return m;
                 })
         })
@@ -151,11 +108,11 @@ async fn handle_add_member(ctx: &Context, interaction: &MessageComponentInteract
 
 fn parse_message_component_interaction_id(
     interaction: &MessageComponentInteraction,
-) -> ButtonChoice {
+) -> embed::ButtonChoice {
     let id = interaction.data.custom_id.clone();
     match id.parse() {
-        Ok(expires) => ButtonChoice::Hours(expires),
-        Err(_) => ButtonChoice::Other(id),
+        Ok(expires) => embed::ButtonChoice::Hours(expires),
+        Err(_) => embed::ButtonChoice::Other(id),
     }
 }
 
@@ -181,10 +138,10 @@ impl EventHandler for Handler {
             },
             Interaction::MessageComponent(component_interaction) => {
                 match parse_message_component_interaction_id(&component_interaction) {
-                    ButtonChoice::Hours(expires) => {
+                    embed::ButtonChoice::Hours(expires) => {
                         handle_add_member(&ctx, &component_interaction, expires).await;
                     }
-                    ButtonChoice::Other(other) => {
+                    embed::ButtonChoice::Other(other) => {
                         println!("{}", other);
                     }
                 }
