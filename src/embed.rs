@@ -5,6 +5,8 @@ use serenity::builder::{
 };
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::utils::Colour;
+use serenity::model::mention::Mention;
+use serenity::model::id::UserId;
 
 pub enum ButtonChoice {
     Hours(u8),
@@ -81,11 +83,17 @@ pub fn create_description_with_members(
 ) -> String {
     let base_description = create_description(&capacity);
     let members = redis_core::get_members(con, &message_id);
-    let mut roster = String::new();
-    for member in members {
-        roster.push_str(&member);
-        roster.push_str("\n");
-    }
+    let members: Vec<UserId> = members
+        .iter()
+        .map(|m| m.parse().unwrap())
+        .map(|m: UserId| m.into())
+        .collect();
+    let roster: String = members
+        .iter()
+        .map(|s| Mention::from(*s))
+        .map(|m| format!("{}", m))
+        .collect::<Vec<String>>()
+        .join("\n");
     format!("{}**Current Squad**\n{}", base_description, roster)
 }
 
