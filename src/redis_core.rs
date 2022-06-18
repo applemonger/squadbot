@@ -123,7 +123,7 @@ pub fn get_capacity(con: &mut redis::Connection, message_id: &String) -> redis::
         .query(con)
 }
 
-pub fn get_members<'a>(con: &'a mut redis::Connection, message_id: &'a String) -> Vec<UserId> {
+pub fn get_members(con: &mut redis::Connection, message_id: &String) -> Vec<UserId> {
     let members_id = members_id(&message_id);
     let mut cmd = redis::cmd("SMEMBERS");
     let redis_members: Vec<String> = cmd
