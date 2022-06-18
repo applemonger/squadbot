@@ -75,6 +75,15 @@ async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String 
     }
 }
 
+fn create_description(content: &String) -> String {
+    format!(
+        "✅ React to this message to ready up!\n\
+        1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
+        SquadBot will message you when at least {} people are ready.\n\n",
+        content
+    )
+}
+
 async fn respond_squad_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
@@ -87,14 +96,7 @@ async fn respond_squad_command(
                 .interaction_response_data(|m| {
                     m.embed(|e| {
                         e.title("Assemble your squad!");
-                        e.description(format!(
-                            "✅ React to this message to ready up!\n\
-                                1️⃣ Use the number reacts to indicate for how many hours you are \
-                                available.\n\n\
-                                SquadBot will message you when at least {} people are \
-                                ready.\n\n",
-                            content
-                        ));
+                        e.description(create_description(&content));
                         e.colour(Colour::from_rgb(59, 165, 93));
                         return e;
                     });
