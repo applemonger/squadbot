@@ -15,6 +15,16 @@ pub async fn handle_add_member(
     redis_core::add_member(&mut con, &message_id, &user_id, seconds).unwrap();
 }
 
+pub async fn handle_delete_member(
+    ctx: &Context,
+    interaction: &MessageComponentInteraction,
+) {
+    let message_id = interaction.message.id.as_u64().to_string();
+    let user_id = interaction.user.id.as_u64().to_string();
+    let mut con = redis_core::get_redis_connection(&ctx).await;
+    redis_core::delete_member(&mut con, &message_id, &user_id).unwrap();
+}
+
 pub fn parse_component_id(interaction: &MessageComponentInteraction) -> embed::ButtonChoice {
     let id = interaction.data.custom_id.clone();
     match id.parse() {

@@ -31,7 +31,7 @@ fn action_row() -> CreateActionRow {
     ar.add_button(button(ButtonChoice::Hours(2)));
     ar.add_button(button(ButtonChoice::Hours(3)));
     ar.add_button(button(ButtonChoice::Hours(4)));
-    ar.add_button(button(ButtonChoice::Other("X".to_string())));
+    ar.add_button(button(ButtonChoice::Other(String::from("Leave"))));
     ar
 }
 

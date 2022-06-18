@@ -73,13 +73,17 @@ pub fn add_member(
     let member_id = member_id(&message_id, &user_id);
     let member_count: u8 = redis::cmd("SCARD").arg(&members_id).query(con).unwrap();
     if member_count == 0 {
+        let ttl: u32 = redis::cmd("TTL")
+            .arg(&squad_id)
+            .query(con)
+            .unwrap();
         redis::cmd("SADD")
             .arg(&members_id)
             .arg(&member_id)
             .query(con)?;
         redis::cmd("EXPIRE")
             .arg(&members_id)
-            .arg(5 * 60 * 60)
+            .arg(ttl)
             .query(con)?;
     } else {
         let capacity: u8 = redis::cmd("HGET")
@@ -99,6 +103,24 @@ pub fn add_member(
         .arg(user_id)
         .arg("EX")
         .arg(expires)
+        .query(con)?;
+
+    Ok(())
+}
+
+pub fn delete_member(
+    con: &mut redis::Connection,
+    message_id: &String,
+    user_id: &String,
+) -> redis::RedisResult<()> {
+    let members_id = members_id(&message_id);
+    let member_id = member_id(&message_id, &user_id);
+    redis::cmd("SREM")
+        .arg(&members_id)
+        .arg(&member_id)
+        .query(con)?;
+    redis::cmd("DEL")
+        .arg(&member_id)
         .query(con)?;
 
     Ok(())

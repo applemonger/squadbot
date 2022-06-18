@@ -8,7 +8,7 @@ use serenity::Client;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-mod add_member;
+mod member;
 mod embed;
 mod redis_core;
 mod squad_command;
@@ -39,12 +39,12 @@ impl EventHandler for Handler {
                 }
             },
             Interaction::MessageComponent(component_interaction) => {
-                match add_member::parse_component_id(&component_interaction) {
+                match member::parse_component_id(&component_interaction) {
                     embed::ButtonChoice::Hours(expires) => {
-                        add_member::handle_add_member(&ctx, &component_interaction, expires).await;
+                        member::handle_add_member(&ctx, &component_interaction, expires).await;
                     }
-                    embed::ButtonChoice::Other(other) => {
-                        println!("{}", other);
+                    embed::ButtonChoice::Other(_) => {
+                        member::handle_delete_member(&ctx, &component_interaction).await;
                     }
                 }
                 if let Err(why) = component_interaction.defer(&ctx.http).await {
