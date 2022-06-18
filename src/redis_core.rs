@@ -81,11 +81,7 @@ pub fn add_member(
             .query(con)?;
         redis::cmd("EXPIRE").arg(&members_id).arg(ttl).query(con)?;
     } else {
-        let capacity: u8 = redis::cmd("HGET")
-            .arg(&squad_id)
-            .arg("capacity")
-            .query(con)
-            .unwrap();
+        let capacity: u8 = get_capacity(con, &message_id).unwrap();
         if member_count < capacity {
             redis::cmd("SADD")
                 .arg(&members_id)
@@ -119,13 +115,12 @@ pub fn delete_member(
     Ok(())
 }
 
-pub fn get_capacity(con: &mut redis::Connection, message_id: &String) -> u8 {
+pub fn get_capacity(con: &mut redis::Connection, message_id: &String) -> redis::RedisResult<u8> {
     let squad_id = squad_id(&message_id);
     redis::cmd("HGET")
         .arg(&squad_id)
         .arg("capacity")
         .query(con)
-        .unwrap()
 }
 
 pub fn get_members<'a>(con: &'a mut redis::Connection, message_id: &'a String) -> Vec<UserId> {
