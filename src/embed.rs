@@ -1,5 +1,7 @@
+use serenity::builder::CreateInteractionResponseData;
 use serenity::builder::{CreateActionRow, CreateButton};
 use serenity::model::interactions::message_component::ButtonStyle;
+use serenity::utils::Colour;
 
 pub enum ButtonChoice {
     Hours(u8),
@@ -23,9 +25,8 @@ fn button(choice: ButtonChoice) -> CreateButton {
     b
 }
 
-pub fn action_row() -> CreateActionRow {
+fn action_row() -> CreateActionRow {
     let mut ar = CreateActionRow::default();
-    // We can add up to 5 buttons per action row
     ar.add_button(button(ButtonChoice::Hours(1)));
     ar.add_button(button(ButtonChoice::Hours(2)));
     ar.add_button(button(ButtonChoice::Hours(3)));
@@ -34,11 +35,25 @@ pub fn action_row() -> CreateActionRow {
     ar
 }
 
-pub fn create_description(content: &String) -> String {
+fn create_description(content: &String) -> String {
     format!(
         "✅ React to this message to ready up!\n\
         1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
         SquadBot will message you when at least {} people are ready.\n\n",
         content
     )
+}
+
+pub fn build_embed<'a, 'b>(
+    m: &'b mut CreateInteractionResponseData<'a>,
+    content: &String,
+) -> &'b mut CreateInteractionResponseData<'a> {
+    m.embed(|e| {
+        e.title("Assemble your squad!");
+        e.description(create_description(&content));
+        e.colour(Colour::from_rgb(59, 165, 93));
+        return e;
+    });
+    m.components(|c| c.add_action_row(action_row()));
+    m
 }

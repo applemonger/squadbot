@@ -10,7 +10,6 @@ use serenity::model::interactions::{Interaction, InteractionResponseType};
 use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::model::prelude::{Message, Ready};
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
-use serenity::utils::Colour;
 use serenity::Client;
 use serenity::Error;
 use std::env;
@@ -50,16 +49,7 @@ async fn respond_squad_command(
         .create_interaction_response(&ctx.http, |response| {
             response
                 .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|m| {
-                    m.embed(|e| {
-                        e.title("Assemble your squad!");
-                        e.description(embed::create_description(&content));
-                        e.colour(Colour::from_rgb(59, 165, 93));
-                        return e;
-                    });
-                    m.components(|c| c.add_action_row(embed::action_row()));
-                    return m;
-                })
+                .interaction_response_data(|m| embed::build_embed(m, &content))
         })
         .await?;
     command.get_interaction_response(&ctx.http).await
