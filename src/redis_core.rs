@@ -117,13 +117,13 @@ pub fn delete_member(
 
 pub fn get_capacity(con: &mut redis::Connection, message_id: &String) -> redis::RedisResult<u8> {
     let squad_id = squad_id(&message_id);
-    redis::cmd("HGET")
-        .arg(&squad_id)
-        .arg("capacity")
-        .query(con)
+    redis::cmd("HGET").arg(&squad_id).arg("capacity").query(con)
 }
 
-pub fn get_members(con: &mut redis::Connection, message_id: &String) -> redis::RedisResult<Vec<UserId>> {
+pub fn get_members(
+    con: &mut redis::Connection,
+    message_id: &String,
+) -> redis::RedisResult<Vec<UserId>> {
     let members_id = members_id(&message_id);
     let redis_members: Vec<String> = redis::cmd("SMEMBERS")
         .arg(&members_id)
@@ -132,10 +132,7 @@ pub fn get_members(con: &mut redis::Connection, message_id: &String) -> redis::R
         .collect();
     let mut members = Vec::new();
     for member in redis_members {
-        let user_id: UserId = redis::cmd("GET")
-            .arg(member)
-            .query::<u64>(con)?
-            .into();
+        let user_id: UserId = redis::cmd("GET").arg(member).query::<u64>(con)?.into();
         members.push(user_id);
     }
     Ok(members)
