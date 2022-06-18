@@ -1,3 +1,5 @@
+use crate::embed;
+use crate::redis_core;
 use serenity::model::interactions::application_command::{
     ApplicationCommand, ApplicationCommandInteraction,
     ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType,
@@ -6,9 +8,6 @@ use serenity::model::interactions::InteractionResponseType;
 use serenity::model::prelude::Message;
 use serenity::prelude::Context;
 use serenity::Error;
-use crate::embed;
-use crate::redis_core;
-
 
 async fn parse_squad_command(command: &ApplicationCommandInteraction) -> String {
     let options = command

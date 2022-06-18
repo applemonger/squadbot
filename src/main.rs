@@ -8,10 +8,10 @@ use serenity::Client;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+mod add_member;
 mod embed;
 mod redis_core;
 mod squad_command;
-mod add_member;
 
 #[group]
 struct General;
