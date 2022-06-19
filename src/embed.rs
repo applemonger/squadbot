@@ -82,19 +82,43 @@ pub fn create_description_with_members(
     capacity: &String,
     message_id: &String,
 ) -> String {
-    let base_description = create_description(&capacity);
     let members: HashMap<UserId, u64> = redis_core::get_members(con, &message_id).unwrap();
-    let mut roster = String::new();
-    for (key, value) in &members {
-        let mention = format!("{}", Mention::from(*key));
-        let ttl = format_ttl(*value);
-        let line = &format!("{} available for {}\n", mention, ttl)[..];
-        roster.push_str(line);
+    let squad_id = redis_core::squad_id(&message_id);
+    let status = redis_core::get_squad_status(con, &squad_id).unwrap();
+    match status {
+        0 => {
+            String::from("🔴 This squad has expired.")
+        },
+        1 => {
+            let base_description = create_description(&capacity);
+            let mut roster = String::new();
+            for (key, value) in &members {
+                let mention = format!("{}", Mention::from(*key));
+                let ttl = format_ttl(*value);
+                let line = &format!("{} available for {}\n", mention, ttl)[..];
+                roster.push_str(line);
+            }
+            format!(
+                "{}**Current Squad**\n{}\n{}",
+                base_description, roster, String::from("🟡 This squad is still forming.")
+            )
+        },
+        2 => {
+            let mut roster = String::new();
+            for (key, _value) in &members {
+                let mention = format!("{}", Mention::from(*key));
+                let line = &format!("{}\n", mention)[..];
+                roster.push_str(line);
+            }
+            format!(
+                "**Squad**\n{}\n{}",
+                roster, String::from("🟢 This squad has been filled!")
+            )
+        },
+        _ => {
+            panic!("Unexpected squad status.")
+        }
     }
-    format!(
-        "{}**Current Squad**\n{}\n",
-        base_description, roster, status
-    )
 }
 
 pub fn format_ttl(ttl: u64) -> String {
@@ -124,6 +148,7 @@ pub fn build_embed<'a, 'b>(
 pub fn update_embed<'a, 'b>(
     m: &'b mut EditMessage<'a>,
     description: String,
+    squad_status: u8,
 ) -> &'b mut EditMessage<'a> {
     m.embed(|e| {
         e.title("Assemble your squad!");
@@ -131,7 +156,11 @@ pub fn update_embed<'a, 'b>(
         e.colour(get_colour());
         e
     });
-    m.components(|c| action_rows(c));
+    if squad_status == 1 {
+        m.components(|c| action_rows(c));
+    } else {
+        m.set_components(CreateComponents(Vec::new()));
+    }
     m
 }
 
@@ -143,9 +172,11 @@ pub async fn build_message(
 ) {
     let capacity: u8 = redis_core::get_capacity(con, &message_id).unwrap();
     let description = create_description_with_members(con, &capacity.to_string(), &message_id);
+    let squad_id = redis_core::squad_id(&message_id);
+    let squad_status = redis_core::get_squad_status(con, &squad_id).unwrap();
     channel_id
         .edit_message(&ctx, MessageId(message_id.parse().unwrap()), |m| {
-            update_embed(m, description)
+            update_embed(m, description, squad_status)
         })
         .await
         .unwrap();

@@ -23,7 +23,7 @@ pub async fn get_redis_connection(ctx: &Context) -> redis::Connection {
     redis_client.get_connection().unwrap()
 }
 
-fn squad_id(message_id: &String) -> String {
+pub fn squad_id(message_id: &String) -> String {
     format!("squad:{}", message_id)
 }
 
@@ -35,6 +35,10 @@ fn member_id(message_id: &String, user_id: &String) -> String {
     format!("member:{}:{}", message_id, user_id)
 }
 
+fn posting_id(message_id: &String) -> String {
+    format!("posting:{}", message_id)
+}
+
 pub fn build_squad(
     con: &mut redis::Connection,
     channel_id: &String,
@@ -43,11 +47,23 @@ pub fn build_squad(
 ) -> redis::RedisResult<()> {
     let squad_id = squad_id(&message_id);
     let members_id = members_id(&message_id);
+    let posting_id = posting_id(&message_id);
     let capacity: u8 = size.parse().unwrap();
+    redis::cmd("SET")
+        .arg(&posting_id)
+        .arg(&squad_id)
+        .arg("EX")
+        .arg(10 * 60 * 60)
+        .query(con)?;
     redis::cmd("HSET")
         .arg(&squad_id)
         .arg("members")
         .arg(members_id)
+        .query(con)?;
+    redis::cmd("HSET")
+        .arg(&squad_id)
+        .arg("posting")
+        .arg(&posting_id)
         .query(con)?;
     redis::cmd("HSET")
         .arg(&squad_id)
@@ -68,10 +84,6 @@ pub fn build_squad(
         .arg(&squad_id)
         .arg("filled")
         .arg(0)
-        .query(con)?;
-    redis::cmd("EXPIRE")
-        .arg(&squad_id)
-        .arg(5 * 60 * 60)
         .query(con)?;
     Ok(())
 }
@@ -242,4 +254,27 @@ pub fn get_filled(con: &mut redis::Connection, squad_id: &String) -> redis::Redi
         .arg(&squad_id)
         .arg("filled")
         .query::<u8>(con)
+}
+
+pub fn get_squad_status(
+    con: &mut redis::Connection,
+    squad_id: &String,
+) -> redis::RedisResult<u8> {
+    let posting_id = redis::cmd("HGET")
+        .arg(&squad_id)
+        .arg("posting")
+        .query::<String>(con)?;
+    let exists = redis::cmd("EXISTS")
+        .arg(&posting_id)
+        .query::<u8>(con)?;
+    if exists == 0 {
+        return Ok(0);
+    } else {
+        let filled = get_filled(con, &squad_id).unwrap();
+        if filled == 0 {
+            return Ok(1);
+        } else {
+            return Ok(2);
+        }
+    }
 }
