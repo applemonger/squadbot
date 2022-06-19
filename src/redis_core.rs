@@ -152,6 +152,39 @@ pub fn get_members(
     Ok(ttls)
 }
 
+pub fn get_members_of(
+    con: &mut redis::Connection,
+    squad_id: &String,
+) -> redis::RedisResult<Vec<UserId>> {
+    let members_id = redis::cmd("HGET")
+        .arg(&squad_id)
+        .arg("members")
+        .query::<String>(con)?;
+    let redis_members: Vec<String> = redis::cmd("SMEMBERS")
+        .arg(&members_id)
+        .clone()
+        .iter::<String>(con)?
+        .collect();
+    let mut members = Vec::new();
+    for member in redis_members {
+        let user_id: UserId = redis::cmd("GET").arg(&member).query::<u64>(con)?.into();
+        members.push(user_id);
+    }
+    Ok(members)
+}
+
+pub fn get_channel_of(
+    con: &mut redis::Connection,
+    squad_id: &String,
+) -> redis::RedisResult<ChannelId> {
+    let channel: ChannelId = redis::cmd("HGET")
+        .arg(&squad_id)
+        .arg("channel")
+        .query::<u64>(con)?
+        .into();
+    Ok(channel)
+}
+
 pub fn get_postings(
     con: &mut redis::Connection,
 ) -> redis::RedisResult<HashMap<MessageId, ChannelId>> {
@@ -175,4 +208,29 @@ pub fn get_postings(
         postings.insert(message_id, channel_id);
     }
     Ok(postings)
+}
+
+pub fn get_full_squads(
+    con: &mut redis::Connection
+) -> redis::RedisResult<Vec<String>> {
+    let squads: Vec<String> = redis::cmd("KEYS")
+        .arg("squad:*")
+        .clone()
+        .iter::<String>(con)?
+        .collect();
+    let mut full_squads = Vec::new();
+    for squad in squads {
+        let members_id = redis::cmd("HGET")
+            .arg(&squad)
+            .arg("members")
+            .query::<String>(con)?;
+        let squad_size = redis::cmd("SCARD")
+            .arg(&members_id)
+            .query::<u8>(con)?;
+        let capacity = redis::cmd("HGET").arg(&squad).arg("capacity").query::<u8>(con)?;
+        if squad_size >= capacity {
+            full_squads.push(squad.clone());
+        }
+    }
+    Ok(full_squads)
 }

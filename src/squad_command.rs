@@ -52,7 +52,7 @@ pub async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, 
                     .name("size")
                     .description("Number from 2 to 10")
                     .kind(ApplicationCommandOptionType::Integer)
-                    .min_int_value(2)
+                    .min_int_value(1)
                     .max_int_value(10)
                     .required(true)
             })

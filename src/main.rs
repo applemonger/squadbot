@@ -16,6 +16,7 @@ mod embed;
 mod member;
 mod redis_core;
 mod squad_command;
+mod notify;
 
 #[group]
 struct General;
@@ -74,7 +75,9 @@ impl EventHandler for Handler {
                     for (key, value) in &postings {
                         embed::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
                     }
-                    tokio::time::sleep(Duration::from_secs(60)).await;
+                    let full_squads = redis_core::get_full_squads(&mut con).unwrap();
+                    notify::notify_squads(&ctx2, &mut con, full_squads).await;
+                    tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             });
             self.is_loop_running.swap(true, Ordering::Relaxed);
