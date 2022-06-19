@@ -35,7 +35,7 @@ fn member_id(message_id: &String, user_id: &String) -> String {
     format!("member:{}:{}", message_id, user_id)
 }
 
-fn posting_id(message_id: &String) -> String {
+pub fn posting_id(message_id: &String) -> String {
     format!("posting:{}", message_id)
 }
 
@@ -162,6 +162,10 @@ pub fn get_members(
         ttls.insert(user_id, ttl);
     }
     Ok(ttls)
+}
+
+pub fn get_ttl(con: &mut redis::Connection, key: &String) -> redis::RedisResult<u64> {
+    redis::cmd("TTL").arg(&key).query::<u64>(con)
 }
 
 pub fn get_members_of(
