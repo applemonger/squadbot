@@ -85,6 +85,10 @@ pub fn build_squad(
         .arg("filled")
         .arg(0)
         .query(con)?;
+    redis::cmd("EXPIRE")
+        .arg(&squad_id)
+        .arg(24 * 60 * 60)
+        .query(con)?;
     Ok(())
 }
 
