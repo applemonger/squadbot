@@ -13,6 +13,9 @@ impl TypeMapKey for Redis {
     type Value = Arc<RwLock<redis::Client>>;
 }
 
+const POSTING_TTL: u64 = 10 * 60 * 60;
+const SQUAD_TTL: u64 = 24 * 60 * 60;
+
 pub async fn get_redis_connection(ctx: &Context) -> redis::Connection {
     let data_read = ctx.data.read().await;
     let redis_client_lock = data_read
@@ -53,7 +56,7 @@ pub fn build_squad(
         .arg(&posting_id)
         .arg(&squad_id)
         .arg("EX")
-        .arg(10 * 60 * 60)
+        .arg(POSTING_TTL)
         .query(con)?;
     redis::cmd("HSET")
         .arg(&squad_id)
@@ -87,7 +90,7 @@ pub fn build_squad(
         .query(con)?;
     redis::cmd("EXPIRE")
         .arg(&squad_id)
-        .arg(24 * 60 * 60)
+        .arg(SQUAD_TTL)
         .query(con)?;
     Ok(())
 }
