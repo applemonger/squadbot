@@ -94,12 +94,12 @@ pub fn add_member(
     user_id: &String,
     expires: u32,
 ) -> redis::RedisResult<()> {
-    let squad_id = squad_id(&message_id);
     let members_id = members_id(&message_id);
     let member_id = member_id(&message_id, &user_id);
+    let posting_id = posting_id(&message_id);
     let member_count: u8 = redis::cmd("SCARD").arg(&members_id).query(con).unwrap();
     if member_count == 0 {
-        let ttl: u32 = redis::cmd("TTL").arg(&squad_id).query(con).unwrap();
+        let ttl: u32 = redis::cmd("TTL").arg(&posting_id).query(con).unwrap();
         redis::cmd("SADD")
             .arg(&members_id)
             .arg(&member_id)
@@ -263,6 +263,7 @@ pub fn get_squad_status(con: &mut redis::Connection, squad_id: &String) -> redis
         .query::<String>(con)?;
     let exists = redis::cmd("EXISTS").arg(&posting_id).query::<u8>(con)?;
     if exists == 0 {
+        redis::cmd("DEL").arg(&squad_id).query(con)?;
         return Ok(0);
     } else {
         let filled = get_filled(con, &squad_id).unwrap();

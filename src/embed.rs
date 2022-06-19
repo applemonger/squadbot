@@ -81,11 +81,10 @@ pub fn create_description_with_members(
     con: &mut redis::Connection,
     capacity: &String,
     message_id: &String,
+    squad_status: u8
 ) -> String {
     let members: HashMap<UserId, u64> = redis_core::get_members(con, &message_id).unwrap();
-    let squad_id = redis_core::squad_id(&message_id);
-    let status = redis_core::get_squad_status(con, &squad_id).unwrap();
-    match status {
+    match squad_status {
         0 => String::from("🔴 This squad has expired."),
         1 => {
             let base_description = create_description(&capacity);
@@ -172,9 +171,9 @@ pub async fn build_message(
     message_id: &String,
 ) {
     let capacity: u8 = redis_core::get_capacity(con, &message_id).unwrap();
-    let description = create_description_with_members(con, &capacity.to_string(), &message_id);
     let squad_id = redis_core::squad_id(&message_id);
     let squad_status = redis_core::get_squad_status(con, &squad_id).unwrap();
+    let description = create_description_with_members(con, &capacity.to_string(), &message_id, squad_status);
     channel_id
         .edit_message(&ctx, MessageId(message_id.parse().unwrap()), |m| {
             update_embed(m, description, squad_status)
