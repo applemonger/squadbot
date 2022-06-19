@@ -28,6 +28,7 @@ const UPDATE_POLL_SECONDS: u64 = 30;
 
 #[async_trait]
 impl EventHandler for Handler {
+    /// Globally registers /squad command when application is launched.
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
         match squad::register_squad_command(ctx).await {
@@ -36,6 +37,10 @@ impl EventHandler for Handler {
         }
     }
 
+    /// SquadBot reacts to three interactions:
+    /// 1) A /squad command is given, indicating the creation of a new squad posting.
+    /// 2) A user clicks a numbered button, adding them to the squad.
+    /// 3) A user clicks on the "Leave Squad" button.
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
             Interaction::ApplicationCommand(command) => match command.data.name.as_str() {
@@ -63,6 +68,11 @@ impl EventHandler for Handler {
         }
     }
 
+    /// SquadBot runs the inner loop here every UPDATE_POLL_SECONDS.
+    /// This code updates existing postings with new status measurements such as how 
+    /// long a squad member is available for or how long the squad posting will last.
+    /// Additionally, filled postings will result in direct messages being sent to 
+    /// squad members.
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
         println!("Cache ready.");
         let ctx = Arc::new(ctx);
