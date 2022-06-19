@@ -70,9 +70,9 @@ impl EventHandler for Handler {
                 loop {
                     let ctx2 = Arc::clone(&ctx1);
                     let mut con = redis_core::get_redis_connection(&ctx2).await;
-                    let postings = redis_core::get_squads(&mut con).unwrap();
+                    let postings = redis_core::get_postings(&mut con).unwrap();
                     for (key, value) in &postings {
-                        member::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
+                        embed::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
                     }
                     tokio::time::sleep(Duration::from_secs(60)).await;
                 }
