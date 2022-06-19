@@ -3,7 +3,7 @@ use serenity::builder::{
     CreateActionRow, CreateButton, CreateComponents, CreateInteractionResponseData, EditMessage,
 };
 use serenity::client::Context;
-use serenity::model::id::{UserId, ChannelId, MessageId};
+use serenity::model::id::{ChannelId, MessageId, UserId};
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::mention::Mention;
 use serenity::utils::Colour;
@@ -91,7 +91,10 @@ pub fn create_description_with_members(
         let line = &format!("{} available for {}\n", mention, ttl)[..];
         roster.push_str(line);
     }
-    format!("{}**Current Squad**\n{}", base_description, roster)
+    format!(
+        "{}**Current Squad**\n{}\n",
+        base_description, roster, status
+    )
 }
 
 pub fn format_ttl(ttl: u64) -> String {
@@ -139,8 +142,7 @@ pub async fn build_message(
     message_id: &String,
 ) {
     let capacity: u8 = redis_core::get_capacity(con, &message_id).unwrap();
-    let description =
-        create_description_with_members(con, &capacity.to_string(), &message_id);
+    let description = create_description_with_members(con, &capacity.to_string(), &message_id);
     channel_id
         .edit_message(&ctx, MessageId(message_id.parse().unwrap()), |m| {
             update_embed(m, description)

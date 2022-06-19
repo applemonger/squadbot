@@ -200,9 +200,7 @@ pub fn get_postings(
     Ok(postings)
 }
 
-pub fn get_full_squads(
-    con: &mut redis::Connection
-) -> redis::RedisResult<Vec<String>> {
+pub fn get_full_squads(con: &mut redis::Connection) -> redis::RedisResult<Vec<String>> {
     let squads: Vec<String> = redis::cmd("KEYS")
         .arg("squad:*")
         .clone()
@@ -214,11 +212,15 @@ pub fn get_full_squads(
             .arg(&squad)
             .arg("members")
             .query::<String>(con)?;
-        let squad_size = redis::cmd("SCARD")
-            .arg(&members_id)
+        let squad_size = redis::cmd("SCARD").arg(&members_id).query::<u8>(con)?;
+        let capacity = redis::cmd("HGET")
+            .arg(&squad)
+            .arg("capacity")
             .query::<u8>(con)?;
-        let capacity = redis::cmd("HGET").arg(&squad).arg("capacity").query::<u8>(con)?;
-        let filled = redis::cmd("HGET").arg(&squad).arg("filled").query::<u8>(con)?;
+        let filled = redis::cmd("HGET")
+            .arg(&squad)
+            .arg("filled")
+            .query::<u8>(con)?;
         if (squad_size >= capacity) && (filled == 0) {
             full_squads.push(squad.clone());
         }
@@ -226,14 +228,18 @@ pub fn get_full_squads(
     Ok(full_squads)
 }
 
-pub fn fill_squad(
-    con: &mut redis::Connection,
-    squad_id: &String,
-) -> redis::RedisResult<()> {
+pub fn fill_squad(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<()> {
     redis::cmd("HSET")
         .arg(&squad_id)
         .arg("filled")
         .arg(1)
         .query(con)?;
     Ok(())
+}
+
+pub fn get_filled(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<u8> {
+    redis::cmd("HGET")
+        .arg(&squad_id)
+        .arg("filled")
+        .query::<u8>(con)
 }

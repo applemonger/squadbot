@@ -14,9 +14,9 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 mod embed;
 mod member;
+mod notify;
 mod redis_core;
 mod squad_command;
-mod notify;
 
 #[group]
 struct General;
