@@ -71,8 +71,7 @@ fn get_colour() -> Colour {
 
 pub fn create_description(capacity: u8) -> String {
     format!(
-        "✅ React to this message to ready up!\n\
-        1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
+        "1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
         SquadBot will message you when at least {} people are ready.\n\n",
         capacity.to_string()
     )
