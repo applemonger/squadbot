@@ -1,6 +1,6 @@
 use crate::embed;
 use crate::redis_core;
-use serenity::model::id::{MessageId, ChannelId};
+use serenity::model::id::{ChannelId, MessageId};
 use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::prelude::Context;
 

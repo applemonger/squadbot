@@ -1,5 +1,6 @@
 use redis;
 use serenity::model::id::UserId;
+use serenity::model::prelude::{ChannelId, MessageId};
 use serenity::prelude::Context;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -52,6 +53,11 @@ pub fn build_squad(
         .arg(&squad_id)
         .arg("channel")
         .arg(&channel_id)
+        .query(con)?;
+    redis::cmd("HSET")
+        .arg(&squad_id)
+        .arg("message")
+        .arg(&message_id)
         .query(con)?;
     redis::cmd("HSET")
         .arg(&squad_id)
@@ -144,4 +150,29 @@ pub fn get_members(
         ttls.insert(user_id, ttl);
     }
     Ok(ttls)
+}
+
+pub fn get_postings(
+    con: &mut redis::Connection,
+) -> redis::RedisResult<HashMap<MessageId, ChannelId>> {
+    let squads: Vec<String> = redis::cmd("KEYS")
+        .arg("squad:*")
+        .clone()
+        .iter::<String>(con)?
+        .collect();
+    let mut postings = HashMap::new();
+    for squad in squads {
+        let message_id: MessageId = redis::cmd("HGET")
+            .arg(&squad)
+            .arg("message")
+            .query::<u64>(con)?
+            .into();
+        let channel_id: ChannelId = redis::cmd("HGET")
+            .arg(&squad)
+            .arg("channel")
+            .query::<u64>(con)?
+            .into();
+        postings.insert(message_id, channel_id);
+    }
+    Ok(postings)
 }

@@ -2,14 +2,14 @@ use dotenv::dotenv;
 use serenity::async_trait;
 use serenity::framework::standard::macros::group;
 use serenity::framework::standard::StandardFramework;
-use serenity::model::prelude::Interaction;
 use serenity::model::gateway::Ready;
 use serenity::model::id::GuildId;
+use serenity::model::prelude::Interaction;
 use serenity::prelude::{Context, EventHandler, GatewayIntents};
 use serenity::Client;
 use std::env;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 mod embed;
@@ -21,7 +21,7 @@ mod squad_command;
 struct General;
 
 struct Handler {
-    is_loop_running: AtomicBool
+    is_loop_running: AtomicBool,
 }
 
 #[async_trait]
@@ -62,13 +62,19 @@ impl EventHandler for Handler {
     }
 
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
+        println!("Cache ready.");
         let ctx = Arc::new(ctx);
         if !self.is_loop_running.load(Ordering::Relaxed) {
-            let _ctx1 = Arc::clone(&ctx);
+            let ctx1 = Arc::clone(&ctx);
             tokio::spawn(async move {
                 loop {
-                    /* Update embeds here */
-                    tokio::time::sleep(Duration::from_secs(10)).await;
+                    let ctx2 = Arc::clone(&ctx1);
+                    let mut con = redis_core::get_redis_connection(&ctx2).await;
+                    let postings = redis_core::get_squads(&mut con).unwrap();
+                    for (key, value) in &postings {
+                        member::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
+                    }
+                    tokio::time::sleep(Duration::from_secs(60)).await;
                 }
             });
             self.is_loop_running.swap(true, Ordering::Relaxed);
@@ -90,6 +96,7 @@ async fn main() {
     // Set Discord intents
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
+        | GatewayIntents::GUILDS
         | GatewayIntents::GUILD_MESSAGE_REACTIONS
         | GatewayIntents::MESSAGE_CONTENT;
 
