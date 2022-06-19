@@ -13,10 +13,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 mod embed;
-mod member;
 mod notify;
 mod redis_core;
-mod squad_command;
+mod squad;
 
 #[group]
 struct General;
@@ -31,7 +30,7 @@ const UPDATE_POLL_SECONDS: u64 = 30;
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
-        match squad_command::register_squad_command(ctx).await {
+        match squad::register_squad_command(ctx).await {
             Ok(_) => println!("Registered global commands."),
             Err(error) => println!("Error registering global commands: {:?}", error),
         }
@@ -41,19 +40,19 @@ impl EventHandler for Handler {
         match interaction {
             Interaction::ApplicationCommand(command) => match command.data.name.as_str() {
                 "squad" => {
-                    squad_command::handle_squad_command(&ctx, &command).await;
+                    squad::handle_squad_command(&ctx, &command).await;
                 }
                 _ => {
                     println!("Not implemented.");
                 }
             },
             Interaction::MessageComponent(component_interaction) => {
-                match member::parse_component_id(&component_interaction) {
+                match squad::parse_component_id(&component_interaction) {
                     embed::ButtonChoice::Hours(expires) => {
-                        member::handle_add_member(&ctx, &component_interaction, expires).await;
+                        squad::handle_add_member(&ctx, &component_interaction, expires).await;
                     }
                     embed::ButtonChoice::Leave(_) => {
-                        member::handle_delete_member(&ctx, &component_interaction).await;
+                        squad::handle_delete_member(&ctx, &component_interaction).await;
                     }
                 }
                 if let Err(why) = component_interaction.defer(&ctx.http).await {
