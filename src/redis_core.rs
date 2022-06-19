@@ -256,17 +256,12 @@ pub fn get_filled(con: &mut redis::Connection, squad_id: &String) -> redis::Redi
         .query::<u8>(con)
 }
 
-pub fn get_squad_status(
-    con: &mut redis::Connection,
-    squad_id: &String,
-) -> redis::RedisResult<u8> {
+pub fn get_squad_status(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<u8> {
     let posting_id = redis::cmd("HGET")
         .arg(&squad_id)
         .arg("posting")
         .query::<String>(con)?;
-    let exists = redis::cmd("EXISTS")
-        .arg(&posting_id)
-        .query::<u8>(con)?;
+    let exists = redis::cmd("EXISTS").arg(&posting_id).query::<u8>(con)?;
     if exists == 0 {
         return Ok(0);
     } else {

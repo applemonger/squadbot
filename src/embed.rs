@@ -86,9 +86,7 @@ pub fn create_description_with_members(
     let squad_id = redis_core::squad_id(&message_id);
     let status = redis_core::get_squad_status(con, &squad_id).unwrap();
     match status {
-        0 => {
-            String::from("🔴 This squad has expired.")
-        },
+        0 => String::from("🔴 This squad has expired."),
         1 => {
             let base_description = create_description(&capacity);
             let mut roster = String::new();
@@ -100,9 +98,11 @@ pub fn create_description_with_members(
             }
             format!(
                 "{}**Current Squad**\n{}\n{}",
-                base_description, roster, String::from("🟡 This squad is still forming.")
+                base_description,
+                roster,
+                String::from("🟡 This squad is still forming.")
             )
-        },
+        }
         2 => {
             let mut roster = String::new();
             for (key, _value) in &members {
@@ -112,9 +112,10 @@ pub fn create_description_with_members(
             }
             format!(
                 "**Squad**\n{}\n{}",
-                roster, String::from("🟢 This squad has been filled!")
+                roster,
+                String::from("🟢 This squad has been filled!")
             )
-        },
+        }
         _ => {
             panic!("Unexpected squad status.")
         }
