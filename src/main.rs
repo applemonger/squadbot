@@ -52,7 +52,7 @@ impl EventHandler for Handler {
                     embed::ButtonChoice::Hours(expires) => {
                         member::handle_add_member(&ctx, &component_interaction, expires).await;
                     }
-                    embed::ButtonChoice::Other(_) => {
+                    embed::ButtonChoice::Leave(_) => {
                         member::handle_delete_member(&ctx, &component_interaction).await;
                     }
                 }

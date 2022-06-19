@@ -12,7 +12,7 @@ use std::collections::HashMap;
 
 pub enum ButtonChoice {
     Hours(u8),
-    Other(String),
+    Leave(String),
 }
 
 fn button(choice: ButtonChoice) -> CreateButton {
@@ -23,7 +23,7 @@ fn button(choice: ButtonChoice) -> CreateButton {
             b.label(hours.to_string());
             b.style(ButtonStyle::Primary);
         }
-        ButtonChoice::Other(s) => {
+        ButtonChoice::Leave(s) => {
             b.custom_id(&s);
             b.label(&s);
             b.style(ButtonStyle::Danger);
@@ -54,7 +54,7 @@ fn hours_selection_row_2() -> CreateActionRow {
 
 fn options_row() -> CreateActionRow {
     let mut ar = CreateActionRow::default();
-    ar.add_button(button(ButtonChoice::Other(String::from("Leave Squad"))));
+    ar.add_button(button(ButtonChoice::Leave(String::from("Leave Squad"))));
     ar
 }
 

@@ -28,6 +28,6 @@ pub fn parse_component_id(interaction: &MessageComponentInteraction) -> embed::B
     let id = interaction.data.custom_id.clone();
     match id.parse() {
         Ok(expires) => embed::ButtonChoice::Hours(expires),
-        Err(_) => embed::ButtonChoice::Other(id),
+        Err(_) => embed::ButtonChoice::Leave(id),
     }
 }
