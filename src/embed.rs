@@ -94,7 +94,7 @@ pub fn create_description_with_members(
     format!("{}**Current Squad**\n{}", base_description, roster)
 }
 
-fn format_ttl(ttl: u64) -> String {
+pub fn format_ttl(ttl: u64) -> String {
     let minutes = ttl / 60;
     let hours = minutes / 60;
     let minutes = minutes % 60;

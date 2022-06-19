@@ -155,22 +155,12 @@ pub fn get_members(
 pub fn get_members_of(
     con: &mut redis::Connection,
     squad_id: &String,
-) -> redis::RedisResult<Vec<UserId>> {
-    let members_id = redis::cmd("HGET")
+) -> redis::RedisResult<HashMap<UserId, u64>> {
+    let message_id = redis::cmd("HGET")
         .arg(&squad_id)
-        .arg("members")
+        .arg("message")
         .query::<String>(con)?;
-    let redis_members: Vec<String> = redis::cmd("SMEMBERS")
-        .arg(&members_id)
-        .clone()
-        .iter::<String>(con)?
-        .collect();
-    let mut members = Vec::new();
-    for member in redis_members {
-        let user_id: UserId = redis::cmd("GET").arg(&member).query::<u64>(con)?.into();
-        members.push(user_id);
-    }
-    Ok(members)
+    get_members(con, &message_id)
 }
 
 pub fn get_channel_of(
