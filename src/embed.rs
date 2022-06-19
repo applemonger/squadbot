@@ -69,28 +69,55 @@ fn get_colour() -> Colour {
     Colour::from_rgb(59, 165, 93)
 }
 
-pub fn create_description(capacity: &String) -> String {
+pub fn create_description(capacity: u8) -> String {
     format!(
         "✅ React to this message to ready up!\n\
         1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
         SquadBot will message you when at least {} people are ready.\n\n",
-        capacity
+        capacity.to_string()
     )
 }
 
-pub fn create_description_with_members(
+pub fn format_ttl(ttl: u64) -> String {
+    let minutes = ttl / 60;
+    let hours = minutes / 60;
+    let minutes = minutes % 60;
+    match hours {
+        0 => format!("{}m", minutes),
+        _ => format!("{}h {}m", hours, minutes),
+    }
+}
+
+pub fn build_embed<'a, 'b>(
+    m: &'b mut CreateInteractionResponseData<'a>,
+    capacity: u8,
+) -> &'b mut CreateInteractionResponseData<'a> {
+    let description = create_description(capacity);
+    m.embed(|e| {
+        e.title("Assemble your squad!");
+        e.description(description);
+        e.colour(get_colour());
+        e
+    });
+    m.components(|c| action_rows(c));
+    m
+}
+
+pub fn update_embed<'a, 'b>(
+    m: &'b mut EditMessage<'a>,
     con: &mut redis::Connection,
-    capacity: &String,
     message_id: &String,
-    squad_status: &SquadStatus,
-) -> String {
-    let members: HashMap<UserId, u64> = redis_core::get_members(con, &message_id).unwrap();
-    match squad_status {
+) -> &'b mut EditMessage<'a> {
+    let squad_id = redis_core::squad_id(&message_id);
+    let capacity: u8 = redis_core::get_capacity(con, &squad_id).unwrap();
+    let squad_status = redis_core::get_squad_status(con, &squad_id).unwrap();
+    let members: HashMap<UserId, u64> = redis_core::get_members(con, &squad_id).unwrap();
+    let description = match squad_status {
         SquadStatus::Expired => String::from("🔴 This squad has expired."),
         SquadStatus::Forming => {
             let posting_id = redis_core::posting_id(&message_id);
             let posting_ttl = redis_core::get_ttl(con, &posting_id).unwrap();
-            let base_description = create_description(&capacity);
+            let base_description = create_description(capacity);
             let mut roster = String::new();
             for (key, value) in &members {
                 let mention = format!("{}", Mention::from(*key));
@@ -120,38 +147,8 @@ pub fn create_description_with_members(
                 String::from("🟢 This squad has been filled!")
             )
         }
-    }
-}
+    };
 
-pub fn format_ttl(ttl: u64) -> String {
-    let minutes = ttl / 60;
-    let hours = minutes / 60;
-    let minutes = minutes % 60;
-    match hours {
-        0 => format!("{}m", minutes),
-        _ => format!("{}h {}m", hours, minutes),
-    }
-}
-
-pub fn build_embed<'a, 'b>(
-    m: &'b mut CreateInteractionResponseData<'a>,
-    description: String,
-) -> &'b mut CreateInteractionResponseData<'a> {
-    m.embed(|e| {
-        e.title("Assemble your squad!");
-        e.description(description);
-        e.colour(get_colour());
-        e
-    });
-    m.components(|c| action_rows(c));
-    m
-}
-
-pub fn update_embed<'a, 'b>(
-    m: &'b mut EditMessage<'a>,
-    description: String,
-    squad_status: &SquadStatus,
-) -> &'b mut EditMessage<'a> {
     m.embed(|e| {
         e.title("Assemble your squad!");
         e.description(description);
@@ -161,7 +158,7 @@ pub fn update_embed<'a, 'b>(
     match squad_status {
         SquadStatus::Forming => {
             m.components(|c| action_rows(c));
-        },
+        }
         _ => {
             m.set_components(CreateComponents(Vec::new()));
         }
@@ -175,14 +172,9 @@ pub async fn build_message(
     con: &mut redis::Connection,
     message_id: &String,
 ) {
-    let capacity: u8 = redis_core::get_capacity(con, &message_id).unwrap();
-    let squad_id = redis_core::squad_id(&message_id);
-    let squad_status = redis_core::get_squad_status(con, &squad_id).unwrap();
-    let description =
-        create_description_with_members(con, &capacity.to_string(), &message_id, &squad_status);
     channel_id
         .edit_message(&ctx, MessageId(message_id.parse().unwrap()), |m| {
-            update_embed(m, description, &squad_status)
+            update_embed(m, con, &message_id)
         })
         .await
         .unwrap();

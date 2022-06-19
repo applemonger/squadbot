@@ -5,8 +5,8 @@ use serenity::model::prelude::Mention;
 
 pub async fn notify_squads(ctx: &Context, con: &mut redis::Connection, squads: Vec<String>) {
     for squad in squads {
-        let members = redis_core::get_members_of(con, &squad).unwrap();
-        let channel = redis_core::get_channel_of(con, &squad).unwrap();
+        let members = redis_core::get_members(con, &squad).unwrap();
+        let channel = redis_core::get_channel(con, &squad).unwrap();
         let channel_mention = format!("{}", Mention::from(channel));
         let mut roster = String::new();
         for (key, value) in &members {

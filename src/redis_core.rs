@@ -16,7 +16,7 @@ impl TypeMapKey for Redis {
 pub enum SquadStatus {
     Expired,
     Forming,
-    Filled
+    Filled,
 }
 
 const POSTING_TTL: u64 = 10 * 60 * 60;
@@ -52,12 +52,11 @@ pub fn build_squad(
     con: &mut redis::Connection,
     channel_id: &String,
     message_id: &String,
-    size: &String,
+    capacity: u8,
 ) -> redis::RedisResult<()> {
     let squad_id = squad_id(&message_id);
     let members_id = members_id(&message_id);
     let posting_id = posting_id(&message_id);
-    let capacity: u8 = size.parse().unwrap();
     redis::cmd("SET")
         .arg(&posting_id)
         .arg(&squad_id)
@@ -123,7 +122,7 @@ pub fn add_member(
                     .query(con)?;
                 redis::cmd("EXPIRE").arg(&members_id).arg(ttl).query(con)?;
             } else {
-                let capacity: u8 = get_capacity(con, &message_id).unwrap();
+                let capacity: u8 = get_capacity(con, &squad_id).unwrap();
                 if member_count < capacity {
                     redis::cmd("SADD")
                         .arg(&members_id)
@@ -140,7 +139,7 @@ pub fn add_member(
         }
         _ => {}
     }
-    
+
     Ok(())
 }
 
@@ -160,46 +159,37 @@ pub fn delete_member(
     Ok(())
 }
 
-pub fn get_capacity(con: &mut redis::Connection, message_id: &String) -> redis::RedisResult<u8> {
-    let squad_id = squad_id(&message_id);
+pub fn get_capacity(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<u8> {
     redis::cmd("HGET").arg(&squad_id).arg("capacity").query(con)
 }
 
 pub fn get_members(
     con: &mut redis::Connection,
-    message_id: &String,
+    squad_id: &String,
 ) -> redis::RedisResult<HashMap<UserId, u64>> {
-    let members_id = members_id(&message_id);
+    let members_id = redis::cmd("HGET")
+        .arg(&squad_id)
+        .arg("members")
+        .query::<String>(con)?;
     let redis_members: Vec<String> = redis::cmd("SMEMBERS")
         .arg(&members_id)
         .clone()
         .iter::<String>(con)?
         .collect();
-    let mut ttls = HashMap::new();
+    let mut members = HashMap::new();
     for member in redis_members {
         let user_id: UserId = redis::cmd("GET").arg(&member).query::<u64>(con)?.into();
         let ttl: u64 = redis::cmd("TTL").arg(&member).query::<u64>(con)?;
-        ttls.insert(user_id, ttl);
+        members.insert(user_id, ttl);
     }
-    Ok(ttls)
+    Ok(members)
 }
 
 pub fn get_ttl(con: &mut redis::Connection, key: &String) -> redis::RedisResult<u64> {
     redis::cmd("TTL").arg(&key).query::<u64>(con)
 }
 
-pub fn get_members_of(
-    con: &mut redis::Connection,
-    squad_id: &String,
-) -> redis::RedisResult<HashMap<UserId, u64>> {
-    let message_id = redis::cmd("HGET")
-        .arg(&squad_id)
-        .arg("message")
-        .query::<String>(con)?;
-    get_members(con, &message_id)
-}
-
-pub fn get_channel_of(
+pub fn get_channel(
     con: &mut redis::Connection,
     squad_id: &String,
 ) -> redis::RedisResult<ChannelId> {
@@ -280,7 +270,10 @@ pub fn get_filled(con: &mut redis::Connection, squad_id: &String) -> redis::Redi
         .query::<u8>(con)
 }
 
-pub fn get_squad_status(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<SquadStatus> {
+pub fn get_squad_status(
+    con: &mut redis::Connection,
+    squad_id: &String,
+) -> redis::RedisResult<SquadStatus> {
     let posting_id = redis::cmd("HGET")
         .arg(&squad_id)
         .arg("posting")
