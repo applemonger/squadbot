@@ -77,7 +77,7 @@ impl EventHandler for Handler {
                     }
                     let full_squads = redis_core::get_full_squads(&mut con).unwrap();
                     notify::notify_squads(&ctx2, &mut con, full_squads).await;
-                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    tokio::time::sleep(Duration::from_secs(30)).await;
                 }
             });
             self.is_loop_running.swap(true, Ordering::Relaxed);
