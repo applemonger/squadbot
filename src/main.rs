@@ -25,6 +25,8 @@ struct Handler {
     is_loop_running: AtomicBool,
 }
 
+const UPDATE_POLL_SECONDS: u64 = 30;
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
@@ -77,7 +79,7 @@ impl EventHandler for Handler {
                     }
                     let full_squads = redis_core::get_full_squads(&mut con).unwrap();
                     notify::notify_squads(&ctx2, &mut con, full_squads).await;
-                    tokio::time::sleep(Duration::from_secs(30)).await;
+                    tokio::time::sleep(Duration::from_secs(UPDATE_POLL_SECONDS)).await;
                 }
             });
             self.is_loop_running.swap(true, Ordering::Relaxed);

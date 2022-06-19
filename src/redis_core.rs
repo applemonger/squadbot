@@ -13,6 +13,12 @@ impl TypeMapKey for Redis {
     type Value = Arc<RwLock<redis::Client>>;
 }
 
+pub enum SquadStatus {
+    Expired,
+    Forming,
+    Filled
+}
+
 const POSTING_TTL: u64 = 10 * 60 * 60;
 const SQUAD_TTL: u64 = 24 * 60 * 60;
 
@@ -104,30 +110,37 @@ pub fn add_member(
     let members_id = members_id(&message_id);
     let member_id = member_id(&message_id, &user_id);
     let posting_id = posting_id(&message_id);
-    let member_count: u8 = redis::cmd("SCARD").arg(&members_id).query(con).unwrap();
-    if member_count == 0 {
-        let ttl: u32 = redis::cmd("TTL").arg(&posting_id).query(con).unwrap();
-        redis::cmd("SADD")
-            .arg(&members_id)
-            .arg(&member_id)
-            .query(con)?;
-        redis::cmd("EXPIRE").arg(&members_id).arg(ttl).query(con)?;
-    } else {
-        let capacity: u8 = get_capacity(con, &message_id).unwrap();
-        if member_count < capacity {
-            redis::cmd("SADD")
-                .arg(&members_id)
-                .arg(&member_id)
+    let squad_id = squad_id(&message_id);
+    let squad_status = get_squad_status(con, &squad_id).unwrap();
+    match squad_status {
+        SquadStatus::Forming => {
+            let member_count: u8 = redis::cmd("SCARD").arg(&members_id).query(con).unwrap();
+            if member_count == 0 {
+                let ttl: u32 = redis::cmd("TTL").arg(&posting_id).query(con).unwrap();
+                redis::cmd("SADD")
+                    .arg(&members_id)
+                    .arg(&member_id)
+                    .query(con)?;
+                redis::cmd("EXPIRE").arg(&members_id).arg(ttl).query(con)?;
+            } else {
+                let capacity: u8 = get_capacity(con, &message_id).unwrap();
+                if member_count < capacity {
+                    redis::cmd("SADD")
+                        .arg(&members_id)
+                        .arg(&member_id)
+                        .query(con)?;
+                }
+            }
+            redis::cmd("SET")
+                .arg(member_id)
+                .arg(user_id)
+                .arg("EX")
+                .arg(expires)
                 .query(con)?;
         }
+        _ => {}
     }
-    redis::cmd("SET")
-        .arg(member_id)
-        .arg(user_id)
-        .arg("EX")
-        .arg(expires)
-        .query(con)?;
-
+    
     Ok(())
 }
 
@@ -267,7 +280,7 @@ pub fn get_filled(con: &mut redis::Connection, squad_id: &String) -> redis::Redi
         .query::<u8>(con)
 }
 
-pub fn get_squad_status(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<u8> {
+pub fn get_squad_status(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<SquadStatus> {
     let posting_id = redis::cmd("HGET")
         .arg(&squad_id)
         .arg("posting")
@@ -275,13 +288,13 @@ pub fn get_squad_status(con: &mut redis::Connection, squad_id: &String) -> redis
     let exists = redis::cmd("EXISTS").arg(&posting_id).query::<u8>(con)?;
     if exists == 0 {
         redis::cmd("DEL").arg(&squad_id).query(con)?;
-        return Ok(0);
+        return Ok(SquadStatus::Expired);
     } else {
         let filled = get_filled(con, &squad_id).unwrap();
         if filled == 0 {
-            return Ok(1);
+            return Ok(SquadStatus::Forming);
         } else {
-            return Ok(2);
+            return Ok(SquadStatus::Filled);
         }
     }
 }

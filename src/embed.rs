@@ -1,4 +1,5 @@
 use crate::redis_core;
+use crate::redis_core::SquadStatus;
 use serenity::builder::{
     CreateActionRow, CreateButton, CreateComponents, CreateInteractionResponseData, EditMessage,
 };
@@ -81,12 +82,12 @@ pub fn create_description_with_members(
     con: &mut redis::Connection,
     capacity: &String,
     message_id: &String,
-    squad_status: u8,
+    squad_status: &SquadStatus,
 ) -> String {
     let members: HashMap<UserId, u64> = redis_core::get_members(con, &message_id).unwrap();
     match squad_status {
-        0 => String::from("🔴 This squad has expired."),
-        1 => {
+        SquadStatus::Expired => String::from("🔴 This squad has expired."),
+        SquadStatus::Forming => {
             let posting_id = redis_core::posting_id(&message_id);
             let posting_ttl = redis_core::get_ttl(con, &posting_id).unwrap();
             let base_description = create_description(&capacity);
@@ -106,7 +107,7 @@ pub fn create_description_with_members(
                 base_description, roster, status
             )
         }
-        2 => {
+        SquadStatus::Filled => {
             let mut roster = String::new();
             for (key, _value) in &members {
                 let mention = format!("{}", Mention::from(*key));
@@ -118,9 +119,6 @@ pub fn create_description_with_members(
                 roster,
                 String::from("🟢 This squad has been filled!")
             )
-        }
-        _ => {
-            panic!("Unexpected squad status.")
         }
     }
 }
@@ -152,7 +150,7 @@ pub fn build_embed<'a, 'b>(
 pub fn update_embed<'a, 'b>(
     m: &'b mut EditMessage<'a>,
     description: String,
-    squad_status: u8,
+    squad_status: &SquadStatus,
 ) -> &'b mut EditMessage<'a> {
     m.embed(|e| {
         e.title("Assemble your squad!");
@@ -160,11 +158,14 @@ pub fn update_embed<'a, 'b>(
         e.colour(get_colour());
         e
     });
-    if squad_status == 1 {
-        m.components(|c| action_rows(c));
-    } else {
-        m.set_components(CreateComponents(Vec::new()));
-    }
+    match squad_status {
+        SquadStatus::Forming => {
+            m.components(|c| action_rows(c));
+        },
+        _ => {
+            m.set_components(CreateComponents(Vec::new()));
+        }
+    };
     m
 }
 
@@ -178,10 +179,10 @@ pub async fn build_message(
     let squad_id = redis_core::squad_id(&message_id);
     let squad_status = redis_core::get_squad_status(con, &squad_id).unwrap();
     let description =
-        create_description_with_members(con, &capacity.to_string(), &message_id, squad_status);
+        create_description_with_members(con, &capacity.to_string(), &message_id, &squad_status);
     channel_id
         .edit_message(&ctx, MessageId(message_id.parse().unwrap()), |m| {
-            update_embed(m, description, squad_status)
+            update_embed(m, description, &squad_status)
         })
         .await
         .unwrap();
