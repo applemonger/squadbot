@@ -26,6 +26,7 @@ pub async fn notify_squads(ctx: &Context, con: &mut redis::Connection, squads: V
                 m
             }).await.unwrap();
         }
+        redis_core::fill_squad(con, &squad).unwrap();
     }
 }
 

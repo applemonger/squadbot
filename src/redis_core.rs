@@ -66,7 +66,7 @@ pub fn build_squad(
         .query(con)?;
     redis::cmd("HSET")
         .arg(&squad_id)
-        .arg("notified")
+        .arg("filled")
         .arg(0)
         .query(con)?;
     redis::cmd("EXPIRE")
@@ -218,9 +218,22 @@ pub fn get_full_squads(
             .arg(&members_id)
             .query::<u8>(con)?;
         let capacity = redis::cmd("HGET").arg(&squad).arg("capacity").query::<u8>(con)?;
-        if squad_size >= capacity {
+        let filled = redis::cmd("HGET").arg(&squad).arg("filled").query::<u8>(con)?;
+        if (squad_size >= capacity) && (filled == 0) {
             full_squads.push(squad.clone());
         }
     }
     Ok(full_squads)
+}
+
+pub fn fill_squad(
+    con: &mut redis::Connection,
+    squad_id: &String,
+) -> redis::RedisResult<()> {
+    redis::cmd("HSET")
+        .arg(&squad_id)
+        .arg("filled")
+        .arg(1)
+        .query(con)?;
+    Ok(())
 }
