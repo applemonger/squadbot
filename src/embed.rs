@@ -1,5 +1,5 @@
-use crate::redis_core;
-use crate::redis_core::SquadStatus;
+use crate::redis_io;
+use crate::redis_io::SquadStatus;
 use serenity::builder::{
     CreateActionRow, CreateButton, CreateComponents, CreateInteractionResponseData, EditMessage,
 };
@@ -107,15 +107,15 @@ pub fn update_embed<'a, 'b>(
     con: &mut redis::Connection,
     message_id: &String,
 ) -> &'b mut EditMessage<'a> {
-    let squad_id = redis_core::squad_id(&message_id);
-    let capacity: u8 = redis_core::get_capacity(con, &squad_id).unwrap();
-    let squad_status = redis_core::get_squad_status(con, &squad_id).unwrap();
-    let members: HashMap<UserId, u64> = redis_core::get_members(con, &squad_id).unwrap();
+    let squad_id = redis_io::squad_id(&message_id);
+    let capacity: u8 = redis_io::get_capacity(con, &squad_id).unwrap();
+    let squad_status = redis_io::get_squad_status(con, &squad_id).unwrap();
+    let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id).unwrap();
     let description = match squad_status {
         SquadStatus::Expired => String::from("🔴 This squad has expired."),
         SquadStatus::Forming => {
-            let posting_id = redis_core::posting_id(&message_id);
-            let posting_ttl = redis_core::get_ttl(con, &posting_id).unwrap();
+            let posting_id = redis_io::posting_id(&message_id);
+            let posting_ttl = redis_io::get_ttl(con, &posting_id).unwrap();
             let base_description = create_description(capacity);
             let mut roster = String::new();
             for (key, value) in &members {

@@ -1,5 +1,5 @@
 use crate::embed;
-use crate::redis_core;
+use crate::redis_io;
 use serenity::model::interactions::application_command::{
     ApplicationCommand, ApplicationCommandInteraction,
     ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType,
@@ -66,9 +66,9 @@ pub async fn handle_squad_command(ctx: &Context, command: &ApplicationCommandInt
     let channel_id = command.channel_id.as_u64().to_string();
     match command_result {
         Ok(response) => {
-            let mut con = redis_core::get_redis_connection(&ctx).await;
+            let mut con = redis_io::get_redis_connection(&ctx).await;
             let message_id = response.id.as_u64().to_string();
-            redis_core::build_squad(&mut con, &channel_id, &message_id, capacity).unwrap();
+            redis_io::build_squad(&mut con, &channel_id, &message_id, capacity).unwrap();
         }
         Err(_) => {
             println!("Unable to respond to command.");
@@ -84,16 +84,16 @@ pub async fn handle_add_member(
     let message_id = interaction.message.id.as_u64().to_string();
     let user_id = interaction.user.id.as_u64().to_string();
     let seconds: u32 = u32::from(expires) * 60 * 60;
-    let mut con = redis_core::get_redis_connection(&ctx).await;
-    redis_core::add_member(&mut con, &message_id, &user_id, seconds).unwrap();
+    let mut con = redis_io::get_redis_connection(&ctx).await;
+    redis_io::add_member(&mut con, &message_id, &user_id, seconds).unwrap();
     embed::build_message(&ctx, &interaction.channel_id, &mut con, &message_id).await;
 }
 
 pub async fn handle_delete_member(ctx: &Context, interaction: &MessageComponentInteraction) {
     let message_id = interaction.message.id.as_u64().to_string();
     let user_id = interaction.user.id.as_u64().to_string();
-    let mut con = redis_core::get_redis_connection(&ctx).await;
-    redis_core::delete_member(&mut con, &message_id, &user_id).unwrap();
+    let mut con = redis_io::get_redis_connection(&ctx).await;
+    redis_io::delete_member(&mut con, &message_id, &user_id).unwrap();
     embed::build_message(&ctx, &interaction.channel_id, &mut con, &message_id).await;
 }
 

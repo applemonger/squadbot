@@ -1,12 +1,12 @@
 use crate::embed;
-use crate::redis_core;
+use crate::redis_io;
 use serenity::client::Context;
 use serenity::model::prelude::Mention;
 
 pub async fn notify_squads(ctx: &Context, con: &mut redis::Connection, squads: Vec<String>) {
     for squad in squads {
-        let members = redis_core::get_members(con, &squad).unwrap();
-        let channel = redis_core::get_channel(con, &squad).unwrap();
+        let members = redis_io::get_members(con, &squad).unwrap();
+        let channel = redis_io::get_channel(con, &squad).unwrap();
         let channel_mention = format!("{}", Mention::from(channel));
         let mut roster = String::new();
         for (key, value) in &members {
@@ -29,6 +29,6 @@ pub async fn notify_squads(ctx: &Context, con: &mut redis::Connection, squads: V
                 .await
                 .unwrap();
         }
-        redis_core::fill_squad(con, &squad).unwrap();
+        redis_io::fill_squad(con, &squad).unwrap();
     }
 }

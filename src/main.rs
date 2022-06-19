@@ -14,7 +14,7 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 mod embed;
 mod notify;
-mod redis_core;
+mod redis_io;
 mod squad;
 
 #[group]
@@ -71,12 +71,12 @@ impl EventHandler for Handler {
             tokio::spawn(async move {
                 loop {
                     let ctx2 = Arc::clone(&ctx1);
-                    let mut con = redis_core::get_redis_connection(&ctx2).await;
-                    let postings = redis_core::get_postings(&mut con).unwrap();
+                    let mut con = redis_io::get_redis_connection(&ctx2).await;
+                    let postings = redis_io::get_postings(&mut con).unwrap();
                     for (key, value) in &postings {
                         embed::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
                     }
-                    let full_squads = redis_core::get_full_squads(&mut con).unwrap();
+                    let full_squads = redis_io::get_full_squads(&mut con).unwrap();
                     notify::notify_squads(&ctx2, &mut con, full_squads).await;
                     tokio::time::sleep(Duration::from_secs(UPDATE_POLL_SECONDS)).await;
                 }
@@ -117,7 +117,7 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         let redis = redis::Client::open("redis://127.0.0.1:6379/").unwrap();
-        data.insert::<redis_core::Redis>(Arc::new(RwLock::new(redis)));
+        data.insert::<redis_io::Redis>(Arc::new(RwLock::new(redis)));
     }
 
     // Start
