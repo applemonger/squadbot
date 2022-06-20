@@ -15,6 +15,8 @@ pub enum ButtonChoice {
     Leave(String),
 }
 
+/// Creates a message component button, which can either be an hour selection or a 
+/// "Leave Squad" button.
 fn button(choice: ButtonChoice) -> CreateButton {
     let mut b = CreateButton::default();
     match choice {
@@ -32,6 +34,7 @@ fn button(choice: ButtonChoice) -> CreateButton {
     b
 }
 
+/// Build first row of message component buttons (Maximum 5).
 fn hours_selection_row_1() -> CreateActionRow {
     let mut ar = CreateActionRow::default();
     ar.add_button(button(ButtonChoice::Hours(1)));
@@ -42,6 +45,7 @@ fn hours_selection_row_1() -> CreateActionRow {
     ar
 }
 
+/// Build second row of message component buttons (Maximum 5).
 fn hours_selection_row_2() -> CreateActionRow {
     let mut ar = CreateActionRow::default();
     ar.add_button(button(ButtonChoice::Hours(6)));
@@ -52,12 +56,14 @@ fn hours_selection_row_2() -> CreateActionRow {
     ar
 }
 
+/// Build last row of message component buttons.
 fn options_row() -> CreateActionRow {
     let mut ar = CreateActionRow::default();
     ar.add_button(button(ButtonChoice::Leave(String::from("Leave Squad"))));
     ar
 }
 
+/// Assemble all rows of action buttons into one component.
 fn action_rows(c: &mut CreateComponents) -> &mut CreateComponents {
     c.add_action_row(hours_selection_row_1());
     c.add_action_row(hours_selection_row_2());
@@ -65,10 +71,12 @@ fn action_rows(c: &mut CreateComponents) -> &mut CreateComponents {
     c
 }
 
+/// Color of side of embed
 fn get_colour() -> Colour {
     Colour::from_rgb(59, 165, 93)
 }
 
+/// Base description included on forming squad postings.
 pub fn create_description(capacity: u8) -> String {
     format!(
         "1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
@@ -77,6 +85,7 @@ pub fn create_description(capacity: u8) -> String {
     )
 }
 
+/// Formats seconds to readable time syntax.
 pub fn format_ttl(ttl: u64) -> String {
     let minutes = ttl / 60;
     let hours = minutes / 60;
@@ -87,6 +96,7 @@ pub fn format_ttl(ttl: u64) -> String {
     }
 }
 
+/// Used to build the initial squad posting
 pub fn build_embed<'a, 'b>(
     m: &'b mut CreateInteractionResponseData<'a>,
     capacity: u8,
@@ -102,6 +112,13 @@ pub fn build_embed<'a, 'b>(
     m
 }
 
+/// Used to update the posting after it has been created.
+/// The posting will change based on squad status:
+/// Forming squad: Displays current squad members, their availability, and remaining 
+///     duration of the squad posting. Buttons to join and leave the squad are 
+///     available to interact with the posting.
+/// Filled squad: Displays the filled squad roster. Buttons are removed.
+/// Expired squad: Mostly blank embed. Buttons are removed.
 pub fn update_embed<'a, 'b>(
     m: &'b mut EditMessage<'a>,
     con: &mut redis::Connection,
@@ -111,6 +128,8 @@ pub fn update_embed<'a, 'b>(
     let capacity: u8 = redis_io::get_capacity(con, &squad_id).unwrap();
     let squad_status = redis_io::get_squad_status(con, &squad_id).unwrap();
     let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id).unwrap();
+
+    // Build description based on squad status.
     let description = match squad_status {
         SquadStatus::Expired => String::from("🔴 This squad has expired."),
         SquadStatus::Forming => {
@@ -148,12 +167,15 @@ pub fn update_embed<'a, 'b>(
         }
     };
 
+    // Build embed
     m.embed(|e| {
         e.title("Assemble your squad!");
         e.description(description);
         e.colour(get_colour());
         e
     });
+
+    // Add or remove interaction buttons based on squad status.
     match squad_status {
         SquadStatus::Forming => {
             m.components(|c| action_rows(c));
@@ -165,6 +187,7 @@ pub fn update_embed<'a, 'b>(
     m
 }
 
+/// Sends updated squad posting to channel.
 pub async fn build_message(
     ctx: &Context,
     channel_id: &ChannelId,
