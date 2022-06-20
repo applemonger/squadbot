@@ -10,6 +10,7 @@ use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::prelude::Context;
 use serenity::Error;
 
+/// Get squad size argument from /squad command
 async fn parse_squad_command(command: &ApplicationCommandInteraction) -> u8 {
     let options = command
         .data
@@ -27,6 +28,7 @@ async fn parse_squad_command(command: &ApplicationCommandInteraction) -> u8 {
     }
 }
 
+/// Create initial squad posting
 async fn respond_squad_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
@@ -42,6 +44,7 @@ async fn respond_squad_command(
     command.get_interaction_response(&ctx.http).await
 }
 
+/// Globally register /squad command
 pub async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, Error> {
     ApplicationCommand::create_global_application_command(&ctx.http, |command| {
         command
@@ -60,6 +63,7 @@ pub async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, 
     .await
 }
 
+/// Create data for new squad posting
 pub async fn handle_squad_command(ctx: &Context, command: &ApplicationCommandInteraction) {
     let capacity: u8 = parse_squad_command(&command).await;
     let command_result = respond_squad_command(&ctx, &command, capacity).await;
@@ -76,6 +80,7 @@ pub async fn handle_squad_command(ctx: &Context, command: &ApplicationCommandInt
     }
 }
 
+/// Create data for new squad member and update squad posting
 pub async fn handle_add_member(
     ctx: &Context,
     interaction: &MessageComponentInteraction,
@@ -89,6 +94,7 @@ pub async fn handle_add_member(
     embed::build_message(&ctx, &interaction.channel_id, &mut con, &message_id).await;
 }
 
+/// Delete data for interacting user and update squad posting
 pub async fn handle_delete_member(ctx: &Context, interaction: &MessageComponentInteraction) {
     let message_id = interaction.message.id.as_u64().to_string();
     let user_id = interaction.user.id.as_u64().to_string();
@@ -97,6 +103,7 @@ pub async fn handle_delete_member(ctx: &Context, interaction: &MessageComponentI
     embed::build_message(&ctx, &interaction.channel_id, &mut con, &message_id).await;
 }
 
+/// Determine which button was pressed on the squad posting
 pub fn parse_component_id(interaction: &MessageComponentInteraction) -> embed::ButtonChoice {
     let id = interaction.data.custom_id.clone();
     match id.parse() {
