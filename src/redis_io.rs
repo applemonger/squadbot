@@ -9,6 +9,7 @@ use typemap_rev::TypeMapKey;
 
 pub struct Redis;
 
+/// Globally available TypeMapKey to store client for Redis connection
 impl TypeMapKey for Redis {
     type Value = Arc<RwLock<redis::Client>>;
 }
@@ -19,9 +20,14 @@ pub enum SquadStatus {
     Filled,
 }
 
+/// Expiration time in seconds for squad postings
 const POSTING_TTL: u64 = 10 * 60 * 60;
+/// Expiration time in seconds for squad data. Squad data is typically deleted through
+/// get_squad_status, but this is provided as a safety net to keep the Redis data store
+/// clear.
 const SQUAD_TTL: u64 = 24 * 60 * 60;
 
+/// Retrieve redis connection from the global data context.
 pub async fn get_redis_connection(ctx: &Context) -> redis::Connection {
     let data_read = ctx.data.read().await;
     let redis_client_lock = data_read
@@ -32,22 +38,42 @@ pub async fn get_redis_connection(ctx: &Context) -> redis::Connection {
     redis_client.get_connection().unwrap()
 }
 
+/// Helper function to create a squad id for Redis.
+/// This is the key of the Hash map which contains the squad data.
 pub fn squad_id(message_id: &String) -> String {
     format!("squad:{}", message_id)
 }
 
+/// Helper function to create a members id for Redis.
+/// This is the key of the Set which contains ids of squad members.
 fn members_id(message_id: &String) -> String {
     format!("members:{}", message_id)
 }
 
+/// Helper function to create a member id for Redis.
+/// This is the Key of the key-value pair for a squad member.
 fn member_id(message_id: &String, user_id: &String) -> String {
     format!("member:{}:{}", message_id, user_id)
 }
 
+/// Helper function to create a squad posting id.
+/// This is the Key of the key-value pair for a squad posting.
 pub fn posting_id(message_id: &String) -> String {
     format!("posting:{}", message_id)
 }
 
+/// Add new squad data to the Redis data store:
+/// HASH squad:msg_id
+///     field members: key of Set which contains member ids
+///     field posting: key of Key-value pair which contains posting id
+///     field channel: id of channel in which squad posting was made
+///     field message: id of message containing squad posting
+///     field capacity: full size of squad
+///     field filled: 0 or 1, whether or not the squad has been filled and notified
+///     expires in SQUAD_TTL seconds
+/// KEY posting:msg_id
+///     contains squad id of the corresponding squad
+///     expires in POSTING_TTL seconds
 pub fn build_squad(
     con: &mut redis::Connection,
     channel_id: &String,
@@ -100,6 +126,15 @@ pub fn build_squad(
     Ok(())
 }
 
+/// Adds a new member to the corresponding squad in Redis.
+/// Creates or appends to ->
+/// SET members:msg_id
+///     contains member ids of the squad in the form member:msg_id:user_id
+///     expires in POSTING_TTL seconds
+/// Creates ->
+/// KEY member:msg_id:user_id
+///     contains Discord user id of squad member
+///     expires in <hours * 60 * 60> seconds where hours is chosen from the posting
 pub fn add_member(
     con: &mut redis::Connection,
     message_id: &String,
@@ -143,6 +178,8 @@ pub fn add_member(
     Ok(())
 }
 
+/// Deletes a give user from the squad data by removing them from the members Set and
+/// deleting the member:msg_id:user_id key-value pair.
 pub fn delete_member(
     con: &mut redis::Connection,
     message_id: &String,
@@ -159,10 +196,12 @@ pub fn delete_member(
     Ok(())
 }
 
+/// Get the capacity from a given squad id
 pub fn get_capacity(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<u8> {
     redis::cmd("HGET").arg(&squad_id).arg("capacity").query(con)
 }
 
+/// Get the members and corresponding expiry times in seconds of a given squad id
 pub fn get_members(
     con: &mut redis::Connection,
     squad_id: &String,
@@ -185,10 +224,12 @@ pub fn get_members(
     Ok(members)
 }
 
+/// Get the time-to-live in seconds of a given key
 pub fn get_ttl(con: &mut redis::Connection, key: &String) -> redis::RedisResult<u64> {
     redis::cmd("TTL").arg(&key).query::<u64>(con)
 }
 
+/// Get the channel where the squad posting was made for a given squad id
 pub fn get_channel(
     con: &mut redis::Connection,
     squad_id: &String,
@@ -201,6 +242,7 @@ pub fn get_channel(
     Ok(channel)
 }
 
+/// Get the channel and message ids of all current squad postings
 pub fn get_postings(
     con: &mut redis::Connection,
 ) -> redis::RedisResult<HashMap<MessageId, ChannelId>> {
@@ -226,6 +268,8 @@ pub fn get_postings(
     Ok(postings)
 }
 
+/// Get a list of squad ids of all squads that are currently at capacity and haven't 
+/// been flagged as filled and notified.
 pub fn get_full_squads(con: &mut redis::Connection) -> redis::RedisResult<Vec<String>> {
     let squads: Vec<String> = redis::cmd("KEYS")
         .arg("squad:*")
@@ -254,6 +298,7 @@ pub fn get_full_squads(con: &mut redis::Connection) -> redis::RedisResult<Vec<St
     Ok(full_squads)
 }
 
+/// Flag a squad as filled
 pub fn fill_squad(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<()> {
     redis::cmd("HSET")
         .arg(&squad_id)
@@ -263,6 +308,7 @@ pub fn fill_squad(con: &mut redis::Connection, squad_id: &String) -> redis::Redi
     Ok(())
 }
 
+/// Read the flag indicating whether or not a squad has been filled and notified
 pub fn get_filled(con: &mut redis::Connection, squad_id: &String) -> redis::RedisResult<u8> {
     redis::cmd("HGET")
         .arg(&squad_id)
@@ -270,6 +316,7 @@ pub fn get_filled(con: &mut redis::Connection, squad_id: &String) -> redis::Redi
         .query::<u8>(con)
 }
 
+/// Get the squad status of a given squad id: Expired, Forming, or Filled
 pub fn get_squad_status(
     con: &mut redis::Connection,
     squad_id: &String,
