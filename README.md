@@ -1,4 +1,4 @@
-![SquadBot](squad_bot.png)
+![SquadBot](squadbot.png)
 _________________
 A Discord bot to help you assemble your friends to play.  
 
