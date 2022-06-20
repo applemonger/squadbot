@@ -125,8 +125,9 @@ async fn main() {
 
     // Add Redis connection
     {
+        let redis_url = env::var("REDIS_URL").expect("token");
         let mut data = client.data.write().await;
-        let redis = redis::Client::open("redis://127.0.0.1:6379/").unwrap();
+        let redis = redis::Client::open(redis_url).unwrap();
         data.insert::<redis_io::Redis>(Arc::new(RwLock::new(redis)));
     }
 

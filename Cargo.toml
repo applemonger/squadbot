@@ -1,5 +1,5 @@
 [package]
-name = "squad-bot"
+name = "squadbot"
 version = "0.1.0"
 edition = "2021"
 
