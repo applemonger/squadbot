@@ -16,4 +16,4 @@ services:
           - db
 
 networks:
-  botnet:
+  botnet: {}
