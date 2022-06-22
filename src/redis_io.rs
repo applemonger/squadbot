@@ -202,24 +202,55 @@ pub fn get_capacity(con: &mut redis::Connection, squad_id: &String) -> redis::Re
 }
 
 /// Get the members and corresponding expiry times in seconds of a given squad id
+/// Also realizes any expired members and deletes them from the members set
 pub fn get_members(
     con: &mut redis::Connection,
     squad_id: &String,
 ) -> redis::RedisResult<HashMap<UserId, u64>> {
-    let members_id = redis::cmd("HGET")
+    // Check if reference to members id set exists within squad data
+    let members_id_field_exists = redis::cmd("HEXISTS")
         .arg(&squad_id)
         .arg("members")
-        .query::<String>(con)?;
-    let redis_members: Vec<String> = redis::cmd("SMEMBERS")
+        .query::<u8>(con)?;
+    // If it does, get the set key, else early return an empty hashmap
+    let members_id = match members_id_field_exists {
+        1 => {
+            redis::cmd("HGET")
+                .arg(&squad_id)
+                .arg("members")
+                .query::<String>(con)?
+        },
+        _ => return Ok(HashMap::new()),
+    };
+    // Check if the members set is populated
+    let members_id_populated = redis::cmd("SCARD")
         .arg(&members_id)
-        .clone()
-        .iter::<String>(con)?
-        .collect();
+        .query::<u8>(con)?;
+    // If it doesn't, early return an empty hashmap, else collect member ids
+    let redis_members: Vec<String> = match members_id_populated {
+        0 => return Ok(HashMap::new()),
+        _ => {
+            redis::cmd("SMEMBERS")
+                .arg(&members_id)
+                .clone()
+                .iter::<String>(con)?
+                .collect()
+        }
+    };
+    // Create hashmap of user ids and corresponding ttls
     let mut members = HashMap::new();
     for member in redis_members {
-        let user_id: UserId = redis::cmd("GET").arg(&member).query::<u64>(con)?.into();
-        let ttl: u64 = redis::cmd("TTL").arg(&member).query::<u64>(con)?;
-        members.insert(user_id, ttl);
+        let exists = redis::cmd("EXISTS").arg(&member).query::<u8>(con)?;
+        if exists == 1 {
+            let user_id: UserId = redis::cmd("GET").arg(&member).query::<u64>(con)?.into();
+            let ttl: u64 = redis::cmd("TTL").arg(&member).query::<u64>(con)?;
+            members.insert(user_id, ttl);
+        } else {
+            redis::cmd("SREM")
+                .arg(&members_id)
+                .arg(&member)
+                .query(con)?;
+        }
     }
     Ok(members)
 }
@@ -268,7 +299,7 @@ pub fn get_postings(
     Ok(postings)
 }
 
-/// Get a list of squad ids of all squads that are currently at capacity and haven't 
+/// Get a list of squad ids of all squads that are currently at capacity and haven't
 /// been flagged as filled and notified.
 pub fn get_full_squads(con: &mut redis::Connection) -> redis::RedisResult<Vec<String>> {
     let squads: Vec<String> = redis::cmd("KEYS")

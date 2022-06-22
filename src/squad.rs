@@ -5,8 +5,8 @@ use serenity::model::interactions::application_command::{
     ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType,
 };
 use serenity::model::interactions::InteractionResponseType;
-use serenity::model::prelude::Message;
 use serenity::model::prelude::message_component::MessageComponentInteraction;
+use serenity::model::prelude::Message;
 use serenity::prelude::Context;
 use serenity::Error;
 
@@ -111,4 +111,3 @@ pub fn parse_component_id(interaction: &MessageComponentInteraction) -> embed::B
         Err(_) => embed::ButtonChoice::Leave(id),
     }
 }
-

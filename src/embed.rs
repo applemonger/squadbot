@@ -15,7 +15,7 @@ pub enum ButtonChoice {
     Leave(String),
 }
 
-/// Creates a message component button, which can either be an hour selection or a 
+/// Creates a message component button, which can either be an hour selection or a
 /// "Leave Squad" button.
 fn button(choice: ButtonChoice) -> CreateButton {
     let mut b = CreateButton::default();
@@ -114,8 +114,8 @@ pub fn build_embed<'a, 'b>(
 
 /// Used to update the posting after it has been created.
 /// The posting will change based on squad status:
-/// Forming squad: Displays current squad members, their availability, and remaining 
-///     duration of the squad posting. Buttons to join and leave the squad are 
+/// Forming squad: Displays current squad members, their availability, and remaining
+///     duration of the squad posting. Buttons to join and leave the squad are
 ///     available to interact with the posting.
 /// Filled squad: Displays the filled squad roster. Buttons are removed.
 /// Expired squad: Mostly blank embed. Buttons are removed.

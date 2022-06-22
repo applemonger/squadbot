@@ -69,9 +69,9 @@ impl EventHandler for Handler {
     }
 
     /// SquadBot runs the inner loop here every UPDATE_POLL_SECONDS.
-    /// This code updates existing postings with new status measurements such as how 
+    /// This code updates existing postings with new status measurements such as how
     /// long a squad member is available for or how long the squad posting will last.
-    /// Additionally, filled postings will result in direct messages being sent to 
+    /// Additionally, filled postings will result in direct messages being sent to
     /// squad members.
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
         println!("Cache ready.");
