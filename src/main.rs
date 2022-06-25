@@ -80,15 +80,18 @@ impl EventHandler for Handler {
             let ctx1 = Arc::clone(&ctx);
             tokio::spawn(async move {
                 loop {
+                    tokio::time::sleep(Duration::from_secs(UPDATE_POLL_SECONDS)).await;
                     let ctx2 = Arc::clone(&ctx1);
                     let mut con = redis_io::get_redis_connection(&ctx2).await;
                     let postings = redis_io::get_postings(&mut con).unwrap();
                     for (key, value) in &postings {
-                        embed::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
+                        let result = embed::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
+                        if let Err(why) = result {
+                            eprintln!("Error building message: {}", why);
+                        };
                     }
                     let full_squads = redis_io::get_full_squads(&mut con).unwrap();
                     notify::notify_squads(&ctx2, &mut con, full_squads).await;
-                    tokio::time::sleep(Duration::from_secs(UPDATE_POLL_SECONDS)).await;
                 }
             });
             self.is_loop_running.swap(true, Ordering::Relaxed);

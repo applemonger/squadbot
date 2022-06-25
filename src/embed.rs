@@ -1,3 +1,4 @@
+use redis;
 use crate::redis_io;
 use crate::redis_io::SquadStatus;
 use serenity::builder::{
@@ -9,6 +10,7 @@ use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::mention::Mention;
 use serenity::utils::Colour;
 use std::collections::HashMap;
+use std::error::Error;
 
 pub enum ButtonChoice {
     Hours(u8),
@@ -112,29 +114,26 @@ pub fn build_embed<'a, 'b>(
     m
 }
 
-/// Used to update the posting after it has been created.
-/// The posting will change based on squad status:
+/// Build embed description dependent upon squad status
 /// Forming squad: Displays current squad members, their availability, and remaining
-///     duration of the squad posting. Buttons to join and leave the squad are
-///     available to interact with the posting.
-/// Filled squad: Displays the filled squad roster. Buttons are removed.
-/// Expired squad: Mostly blank embed. Buttons are removed.
-pub fn update_embed<'a, 'b>(
-    m: &'b mut EditMessage<'a>,
+///     duration of the squad posting
+/// Filled squad: Displays the filled squad roster.
+/// Expired squad: Mostly blank embed.
+pub fn build_description(
     con: &mut redis::Connection,
+    squad_id: &String,
+    squad_status: &SquadStatus,
     message_id: &String,
-) -> &'b mut EditMessage<'a> {
-    let squad_id = redis_io::squad_id(&message_id);
-    let capacity: u8 = redis_io::get_capacity(con, &squad_id).unwrap();
-    let squad_status = redis_io::get_squad_status(con, &squad_id).unwrap();
-    let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id).unwrap();
+) -> Result<String, redis::RedisError> {
+    let capacity: u8 = redis_io::get_capacity(con, &squad_id)?;
+    let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id)?;
 
     // Build description based on squad status.
     let description = match squad_status {
         SquadStatus::Expired => String::from("🔴 This squad has expired."),
         SquadStatus::Forming => {
             let posting_id = redis_io::posting_id(&message_id);
-            let posting_ttl = redis_io::get_ttl(con, &posting_id).unwrap();
+            let posting_ttl = redis_io::get_ttl(con, &posting_id)?;
             let base_description = create_description(capacity);
             let mut roster = String::new();
             for (key, value) in &members {
@@ -166,7 +165,19 @@ pub fn update_embed<'a, 'b>(
             )
         }
     };
+    
+    Ok(description)
+}
 
+/// Used to update the posting after it has been created.
+/// Forming squad: Displays buttons to join and leave squad.
+/// Filled squad: Buttons are removed.
+/// Expired squad: Buttons are removed.
+pub fn update_embed<'a, 'b>(
+    m: &'b mut EditMessage<'a>,
+    squad_status: SquadStatus,
+    description: &String,
+) -> &'b mut EditMessage<'a> {
     // Build embed
     m.embed(|e| {
         e.title("Assemble your squad!");
@@ -193,11 +204,15 @@ pub async fn build_message(
     channel_id: &ChannelId,
     con: &mut redis::Connection,
     message_id: &String,
-) {
+) -> Result<(), Box<dyn Error>> {
+    let squad_id = redis_io::squad_id(&message_id);
+    let squad_status = redis_io::get_squad_status(con, &squad_id)?;
+    let description = build_description(con, &squad_id, &squad_status, &message_id)?;
+    let message_id_u64 = message_id.parse()?;
     channel_id
-        .edit_message(&ctx, MessageId(message_id.parse().unwrap()), |m| {
-            update_embed(m, con, &message_id)
+        .edit_message(&ctx, MessageId(message_id_u64), |m| {
+            update_embed(m, squad_status, &description)
         })
-        .await
-        .unwrap();
+        .await?;
+    Ok(())
 }
