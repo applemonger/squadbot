@@ -1,6 +1,6 @@
 services:
   squadbot:
-    image: squadbot
+    image: afterly/squadbot
     build:
       context: .
       dockerfile: squadbot.Dockerfile
