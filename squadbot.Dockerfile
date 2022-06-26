@@ -17,5 +17,7 @@ RUN cargo build --release
 FROM debian:buster-slim
 
 COPY --from=build /squadbot/target/release/squadbot .
+COPY run.sh run.sh
+RUN chmod +x run.sh
 
-CMD ["./squadbot"]
+CMD ["./run.sh"]
