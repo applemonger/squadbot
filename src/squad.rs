@@ -7,7 +7,7 @@ use serenity::model::interactions::application_command::{
 use serenity::model::interactions::InteractionResponseType;
 use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::model::prelude::Message;
-use serenity::model::guild::Role;
+use serenity::model::id::RoleId;
 use serenity::prelude::Context;
 use serenity::Error;
 use std::error::Error as StdError;
@@ -48,7 +48,7 @@ async fn parse_squad_size(
 /// Get squad role argument from /squad command
 async fn parse_squad_role(
     command: &ApplicationCommandInteraction,
-) -> Result<Option<Role>, Box<dyn StdError>> {
+) -> Result<Option<RoleId>, Box<dyn StdError>> {
     let options = command.data.options.get(1);
 
     let options = match options {
@@ -74,7 +74,7 @@ async fn parse_squad_role(
         }
     };
 
-    Ok(Some(role.clone()))
+    Ok(Some(role.id))
 }
 
 /// Create initial squad posting
@@ -82,13 +82,13 @@ async fn respond_squad_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
     capacity: u8,
-    role: Option<Role>
+    role_id: Option<RoleId>
 ) -> Result<Message, Error> {
     command
         .create_interaction_response(&ctx.http, |response| {
             response
                 .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|m| embed::build_embed(m, capacity, role))
+                .interaction_response_data(|m| embed::build_embed(m, capacity, role_id))
         })
         .await?;
     command.get_interaction_response(&ctx.http).await
@@ -126,12 +126,12 @@ pub async fn handle_squad_command(
     command: &ApplicationCommandInteraction,
 ) -> Result<(), Box<dyn StdError>> {
     let capacity: u8 = parse_squad_size(&command).await?;
-    let role: Option<Role> = parse_squad_role(&command).await?;
-    let response = respond_squad_command(&ctx, &command, capacity, role).await?;
+    let role_id: Option<RoleId> = parse_squad_role(&command).await?;
+    let response = respond_squad_command(&ctx, &command, capacity, role_id).await?;
     let channel_id = command.channel_id.as_u64().to_string();
     let mut con = redis_io::get_redis_connection(&ctx).await?;
     let message_id = response.id.as_u64().to_string();
-    redis_io::build_squad(&mut con, &channel_id, &message_id, capacity)?;
+    redis_io::build_squad(&mut con, &channel_id, &message_id, capacity, role_id)?;
     Ok(())
 }
 

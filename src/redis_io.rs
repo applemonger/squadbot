@@ -1,6 +1,6 @@
 use redis;
 use serenity::model::id::UserId;
-use serenity::model::prelude::{ChannelId, MessageId};
+use serenity::model::prelude::{ChannelId, MessageId, RoleId};
 use serenity::prelude::Context;
 use std::collections::HashMap;
 use std::error::Error;
@@ -73,6 +73,7 @@ pub fn posting_id(message_id: &String) -> String {
 ///     field capacity: full size of squad
 ///     field filled: 0 or 1, whether or not the squad has been filled and notified
 ///     expires in SQUAD_TTL seconds
+///     field role: role ID (if any) that was mentioned in the /squad command
 /// KEY posting:msg_id
 ///     contains squad id of the corresponding squad
 ///     expires in POSTING_TTL seconds
@@ -81,6 +82,7 @@ pub fn build_squad(
     channel_id: &String,
     message_id: &String,
     capacity: u8,
+    role_id: Option<RoleId>,
 ) -> redis::RedisResult<()> {
     let squad_id = squad_id(&message_id);
     let members_id = members_id(&message_id);
@@ -121,6 +123,16 @@ pub fn build_squad(
         .arg("filled")
         .arg(0)
         .query(con)?;
+    match role_id {
+        Some(id) => {
+            redis::cmd("HSET")
+                .arg(&squad_id)
+                .arg("role")
+                .arg(id.as_u64().to_string())
+                .query(con)?;
+        },
+        None => {}
+    }
     redis::cmd("EXPIRE")
         .arg(&squad_id)
         .arg(SQUAD_TTL)
@@ -361,6 +373,29 @@ pub fn get_squad_status(
             return Ok(SquadStatus::Forming);
         } else {
             return Ok(SquadStatus::Filled);
+        }
+    }
+}
+
+pub fn get_role_id(
+    con: &mut redis::Connection,
+    squad_id: &String,
+) -> redis::RedisResult<Option<RoleId>> {
+    let role_id_field_exists = redis::cmd("HEXISTS")
+        .arg(&squad_id)
+        .arg("role")
+        .query::<u8>(con)?;
+    match role_id_field_exists {
+        1 => {
+            let role_id: RoleId = redis::cmd("HGET")
+                .arg(&squad_id)
+                .arg("role")
+                .query::<u64>(con)?
+                .into();
+            Ok(Some(role_id))
+        },
+        _ => {
+            Ok(None)
         }
     }
 }

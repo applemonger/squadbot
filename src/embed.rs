@@ -9,7 +9,7 @@ use serenity::model::id::{ChannelId, MessageId, UserId};
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::mention::Mention;
 use serenity::prelude::Mentionable;
-use serenity::model::guild::Role;
+use serenity::model::id::RoleId;
 use serenity::utils::Colour;
 use std::collections::HashMap;
 use std::error::Error;
@@ -81,14 +81,14 @@ fn get_colour() -> Colour {
 }
 
 /// Base description included on forming squad postings.
-pub fn create_description(capacity: u8, role: Option<Role>) -> String {
-    match role {
+pub fn create_description(capacity: u8, role_id: Option<RoleId>) -> String {
+    match role_id {
         Some(r) => {
             format!(
                 "{} \n
                 1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
                 SquadBot will message you when at least {} people are ready.\n\n",
-                r,
+                r.mention(),
                 capacity.to_string()
             )
         },
@@ -117,9 +117,9 @@ pub fn format_ttl(ttl: u64) -> String {
 pub fn build_embed<'a, 'b>(
     m: &'b mut CreateInteractionResponseData<'a>,
     capacity: u8,
-    role: Option<Role>
+    role_id: Option<RoleId>
 ) -> &'b mut CreateInteractionResponseData<'a> {
-    let description = create_description(capacity, role);
+    let description = create_description(capacity, role_id);
     m.embed(|e| {
         e.title("Assemble your squad!");
         e.description(description);
@@ -149,7 +149,8 @@ pub fn build_description(
             let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id)?;
             let posting_id = redis_io::posting_id(&message_id);
             let posting_ttl = redis_io::get_ttl(con, &posting_id)?;
-            let base_description = create_description(capacity, None);
+            let role_id = redis_io::get_role_id(con, &squad_id)?;
+            let base_description = create_description(capacity, role_id);
             let mut roster = String::new();
             for (key, value) in &members {
                 let mention = format!("{}", Mention::from(*key));
