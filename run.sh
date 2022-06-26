@@ -1,2 +1,2 @@
 #!/bin/bash
-./squadbot > output.log
+./squadbot &> output.log
