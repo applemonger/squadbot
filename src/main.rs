@@ -104,7 +104,10 @@ impl EventHandler for Handler {
                         };
                     }
                     let full_squads = redis_io::get_full_squads(&mut con).unwrap();
-                    notify::notify_squads(&ctx2, &mut con, full_squads).await;
+                    if let Err(why) = notify::notify_squads(&ctx2, &mut con, full_squads).await {
+                        eprintln!("Error notifying squads: {}", why);
+                        continue;
+                    }
                 }
             });
             self.is_loop_running.swap(true, Ordering::Relaxed);

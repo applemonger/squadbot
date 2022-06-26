@@ -2,13 +2,18 @@ use crate::embed;
 use crate::redis_io;
 use serenity::client::Context;
 use serenity::model::prelude::Mention;
+use std::error::Error;
 
 /// DMs a notification to each member of every given squad (presumably filled squads).
-pub async fn notify_squads(ctx: &Context, con: &mut redis::Connection, squads: Vec<String>) {
+pub async fn notify_squads(
+    ctx: &Context, 
+    con: &mut redis::Connection, 
+    squads: Vec<String>
+) -> Result<(), Box<dyn Error>> {
     for squad in squads {
         // Get members of squad and the channel of the squad posting
-        let members = redis_io::get_members(con, &squad).unwrap();
-        let channel = redis_io::get_channel(con, &squad).unwrap();
+        let members = redis_io::get_members(con, &squad)?;
+        let channel = redis_io::get_channel(con, &squad)?;
         // Link to the channel in which the squad posting was made
         let channel_mention = format!("{}", Mention::from(channel));
         // Include roster of squad members in each message
@@ -21,7 +26,7 @@ pub async fn notify_squads(ctx: &Context, con: &mut redis::Connection, squads: V
         }
         // Send message to each squad member
         for (user_id, _ttl) in &members {
-            let dm_channel = user_id.create_dm_channel(&ctx.http).await.unwrap();
+            let dm_channel = user_id.create_dm_channel(&ctx.http).await?;
             dm_channel
                 .send_message(&ctx.http, |m| {
                     m.embed(|e| {
@@ -31,10 +36,10 @@ pub async fn notify_squads(ctx: &Context, con: &mut redis::Connection, squads: V
                     });
                     m
                 })
-                .await
-                .unwrap();
+                .await?;
         }
         // Mark the squad as filled
-        redis_io::fill_squad(con, &squad).unwrap();
+        redis_io::fill_squad(con, &squad)?;
     }
+    Ok(())
 }
