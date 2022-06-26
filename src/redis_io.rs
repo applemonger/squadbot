@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use typemap_rev::TypeMapKey;
+use std::error::Error;
 
 pub struct Redis;
 
@@ -28,14 +29,17 @@ const POSTING_TTL: u64 = 10 * 60 * 60;
 const SQUAD_TTL: u64 = 24 * 60 * 60;
 
 /// Retrieve redis connection from the global data context.
-pub async fn get_redis_connection(ctx: &Context) -> redis::Connection {
+pub async fn get_redis_connection(ctx: &Context) -> Result<redis::Connection, Box<dyn Error>> {
     let data_read = ctx.data.read().await;
-    let redis_client_lock = data_read
-        .get::<Redis>()
-        .expect("Expected Redis in TypeMap")
-        .clone();
+    let redis_client_lock = match data_read.get::<Redis>() {
+        Some(lock) => lock.clone(),
+        None => {
+            return Err("Unable to get Redis client lock.".into());
+        }
+    };
     let redis_client = redis_client_lock.read().await;
-    redis_client.get_connection().unwrap()
+    let con = redis_client.get_connection()?;
+    Ok(con)
 }
 
 /// Helper function to create a squad id for Redis.

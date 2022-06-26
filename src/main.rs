@@ -88,12 +88,19 @@ impl EventHandler for Handler {
                 loop {
                     tokio::time::sleep(Duration::from_secs(UPDATE_POLL_SECONDS)).await;
                     let ctx2 = Arc::clone(&ctx1);
-                    let mut con = redis_io::get_redis_connection(&ctx2).await;
+                    let mut con = match redis_io::get_redis_connection(&ctx2).await {
+                        Ok(c) => c,
+                        Err(why) => {
+                            eprintln!("Error getting Redis connection: {}", why);
+                            continue;
+                        }
+                    };
                     let postings = redis_io::get_postings(&mut con).unwrap();
                     for (key, value) in &postings {
                         let result = embed::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
                         if let Err(why) = result {
                             eprintln!("Error building message: {}", why);
+                            continue;
                         };
                     }
                     let full_squads = redis_io::get_full_squads(&mut con).unwrap();

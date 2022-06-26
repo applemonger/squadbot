@@ -90,7 +90,7 @@ pub async fn handle_squad_command(
     let capacity: u8 = parse_squad_command(&command).await?;
     let response = respond_squad_command(&ctx, &command, capacity).await?;
     let channel_id = command.channel_id.as_u64().to_string();
-    let mut con = redis_io::get_redis_connection(&ctx).await;
+    let mut con = redis_io::get_redis_connection(&ctx).await?;
     let message_id = response.id.as_u64().to_string();
     redis_io::build_squad(&mut con, &channel_id, &message_id, capacity)?;
     Ok(())
@@ -105,7 +105,7 @@ pub async fn handle_add_member(
     let message_id = interaction.message.id.as_u64().to_string();
     let user_id = interaction.user.id.as_u64().to_string();
     let seconds: u32 = u32::from(expires) * 60 * 60;
-    let mut con = redis_io::get_redis_connection(&ctx).await;
+    let mut con = redis_io::get_redis_connection(&ctx).await?;
     redis_io::add_member(&mut con, &message_id, &user_id, seconds)?;
     embed::build_message(&ctx, &interaction.channel_id, &mut con, &message_id).await?;
     Ok(())
@@ -118,7 +118,7 @@ pub async fn handle_delete_member(
 ) -> Result<(), Box<dyn StdError>> {
     let message_id = interaction.message.id.as_u64().to_string();
     let user_id = interaction.user.id.as_u64().to_string();
-    let mut con = redis_io::get_redis_connection(&ctx).await;
+    let mut con = redis_io::get_redis_connection(&ctx).await?;
     redis_io::delete_member(&mut con, &message_id, &user_id)?;
     embed::build_message(&ctx, &interaction.channel_id, &mut con, &message_id).await?;
     Ok(())
