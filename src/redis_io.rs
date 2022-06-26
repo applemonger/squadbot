@@ -23,10 +23,8 @@ pub enum SquadStatus {
 
 /// Expiration time in seconds for squad postings
 const POSTING_TTL: u64 = 10 * 60 * 60;
-/// Expiration time in seconds for squad data. Squad data is typically deleted through
-/// get_squad_status, but this is provided as a safety net to keep the Redis data store
-/// clear.
-const SQUAD_TTL: u64 = 24 * 60 * 60;
+/// Expiration time in seconds for squad data.
+const SQUAD_TTL: u64 = 11 * 60 * 60;
 
 /// Retrieve redis connection from the global data context.
 pub async fn get_redis_connection(ctx: &Context) -> Result<redis::Connection, Box<dyn Error>> {
@@ -362,7 +360,6 @@ pub fn get_squad_status(
         .query::<String>(con)?;
     let exists = redis::cmd("EXISTS").arg(&posting_id).query::<u8>(con)?;
     if exists == 0 {
-        redis::cmd("DEL").arg(&squad_id).query(con)?;
         return Ok(SquadStatus::Expired);
     } else {
         let filled = get_filled(con, &squad_id).unwrap();

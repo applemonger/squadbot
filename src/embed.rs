@@ -125,13 +125,12 @@ pub fn build_description(
     squad_status: &SquadStatus,
     message_id: &String,
 ) -> Result<String, redis::RedisError> {
-    let capacity: u8 = redis_io::get_capacity(con, &squad_id)?;
-    let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id)?;
-
     // Build description based on squad status.
     let description = match squad_status {
         SquadStatus::Expired => String::from("🔴 This squad has expired."),
         SquadStatus::Forming => {
+            let capacity: u8 = redis_io::get_capacity(con, &squad_id)?;
+            let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id)?;
             let posting_id = redis_io::posting_id(&message_id);
             let posting_ttl = redis_io::get_ttl(con, &posting_id)?;
             let base_description = create_description(capacity);
@@ -153,6 +152,7 @@ pub fn build_description(
         }
         SquadStatus::Filled => {
             let mut roster = String::new();
+            let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id)?;
             for (key, _value) in &members {
                 let mention = format!("{}", Mention::from(*key));
                 let line = &format!("{}\n", mention)[..];
