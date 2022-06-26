@@ -377,6 +377,7 @@ pub fn get_squad_status(
     }
 }
 
+/// Get the role id that was posted with the given squad
 pub fn get_role_id(
     con: &mut redis::Connection,
     squad_id: &String,
