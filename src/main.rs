@@ -45,7 +45,9 @@ impl EventHandler for Handler {
         match interaction {
             Interaction::ApplicationCommand(command) => match command.data.name.as_str() {
                 "squad" => {
-                    squad::handle_squad_command(&ctx, &command).await;
+                    if let Err(why) = squad::handle_squad_command(&ctx, &command).await {
+                        eprintln!("Error handling squad command: {}", why);
+                    }
                 }
                 _ => {
                     println!("Not implemented.");
@@ -54,10 +56,14 @@ impl EventHandler for Handler {
             Interaction::MessageComponent(component_interaction) => {
                 match squad::parse_component_id(&component_interaction) {
                     embed::ButtonChoice::Hours(expires) => {
-                        squad::handle_add_member(&ctx, &component_interaction, expires).await;
+                        if let Err(why) = squad::handle_add_member(&ctx, &component_interaction, expires).await {
+                            eprintln!("Error handling add member: {}", why);
+                        };
                     }
                     embed::ButtonChoice::Leave(_) => {
-                        squad::handle_delete_member(&ctx, &component_interaction).await;
+                        if let Err(why) = squad::handle_delete_member(&ctx, &component_interaction).await {
+                            eprintln!("Error handling delete member: {}", why);
+                        };
                     }
                 }
                 if let Err(why) = component_interaction.defer(&ctx.http).await {
