@@ -56,12 +56,16 @@ impl EventHandler for Handler {
             Interaction::MessageComponent(component_interaction) => {
                 match squad::parse_component_id(&component_interaction) {
                     embed::ButtonChoice::Hours(expires) => {
-                        if let Err(why) = squad::handle_add_member(&ctx, &component_interaction, expires).await {
+                        if let Err(why) =
+                            squad::handle_add_member(&ctx, &component_interaction, expires).await
+                        {
                             eprintln!("Error handling add member: {}", why);
                         };
                     }
                     embed::ButtonChoice::Leave(_) => {
-                        if let Err(why) = squad::handle_delete_member(&ctx, &component_interaction).await {
+                        if let Err(why) =
+                            squad::handle_delete_member(&ctx, &component_interaction).await
+                        {
                             eprintln!("Error handling delete member: {}", why);
                         };
                     }
@@ -97,7 +101,8 @@ impl EventHandler for Handler {
                     };
                     let postings = redis_io::get_postings(&mut con).unwrap();
                     for (key, value) in &postings {
-                        let result = embed::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
+                        let result =
+                            embed::build_message(&ctx2, &value, &mut con, &key.to_string()).await;
                         if let Err(why) = result {
                             eprintln!("Error building message: {}", why);
                             continue;

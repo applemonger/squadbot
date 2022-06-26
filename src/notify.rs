@@ -6,9 +6,9 @@ use std::error::Error;
 
 /// DMs a notification to each member of every given squad (presumably filled squads).
 pub async fn notify_squads(
-    ctx: &Context, 
-    con: &mut redis::Connection, 
-    squads: Vec<String>
+    ctx: &Context,
+    con: &mut redis::Connection,
+    squads: Vec<String>,
 ) -> Result<(), Box<dyn Error>> {
     for squad in squads {
         // Get members of squad and the channel of the squad posting

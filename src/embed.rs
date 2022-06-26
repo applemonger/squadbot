@@ -1,6 +1,6 @@
-use redis;
 use crate::redis_io;
 use crate::redis_io::SquadStatus;
+use redis;
 use serenity::builder::{
     CreateActionRow, CreateButton, CreateComponents, CreateInteractionResponseData, EditMessage,
 };
@@ -165,7 +165,7 @@ pub fn build_description(
             )
         }
     };
-    
+
     Ok(description)
 }
 

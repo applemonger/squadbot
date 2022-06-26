@@ -3,10 +3,10 @@ use serenity::model::id::UserId;
 use serenity::model::prelude::{ChannelId, MessageId};
 use serenity::prelude::Context;
 use std::collections::HashMap;
+use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use typemap_rev::TypeMapKey;
-use std::error::Error;
 
 pub struct Redis;
 
@@ -216,28 +216,22 @@ pub fn get_members(
         .query::<u8>(con)?;
     // If it does, get the set key, else early return an empty hashmap
     let members_id = match members_id_field_exists {
-        1 => {
-            redis::cmd("HGET")
-                .arg(&squad_id)
-                .arg("members")
-                .query::<String>(con)?
-        },
+        1 => redis::cmd("HGET")
+            .arg(&squad_id)
+            .arg("members")
+            .query::<String>(con)?,
         _ => return Ok(HashMap::new()),
     };
     // Check if the members set is populated
-    let members_id_populated = redis::cmd("SCARD")
-        .arg(&members_id)
-        .query::<u8>(con)?;
+    let members_id_populated = redis::cmd("SCARD").arg(&members_id).query::<u8>(con)?;
     // If it doesn't, early return an empty hashmap, else collect member ids
     let redis_members: Vec<String> = match members_id_populated {
         0 => return Ok(HashMap::new()),
-        _ => {
-            redis::cmd("SMEMBERS")
-                .arg(&members_id)
-                .clone()
-                .iter::<String>(con)?
-                .collect()
-        }
+        _ => redis::cmd("SMEMBERS")
+            .arg(&members_id)
+            .clone()
+            .iter::<String>(con)?
+            .collect(),
     };
     // Create hashmap of user ids and corresponding ttls
     let mut members = HashMap::new();

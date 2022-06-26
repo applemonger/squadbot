@@ -12,28 +12,25 @@ use serenity::Error;
 use std::error::Error as StdError;
 
 /// Get squad size argument from /squad command
-async fn parse_squad_command(command: &ApplicationCommandInteraction) -> Result<u8, Box<dyn StdError>> {
-    let options = command
-        .data
-        .options
-        .get(0);
+async fn parse_squad_command(
+    command: &ApplicationCommandInteraction,
+) -> Result<u8, Box<dyn StdError>> {
+    let options = command.data.options.get(0);
 
     let options = match options {
         Some(opt) => opt,
         None => {
             return Err("Unable to parse options.".into());
-        } 
+        }
     };
 
-    let options = options
-        .resolved
-        .as_ref();
+    let options = options.resolved.as_ref();
 
     let options = match options {
         Some(opt) => opt,
         None => {
             return Err("Unable to parse reference.".into());
-        } 
+        }
     };
 
     let size = match options {
@@ -84,8 +81,8 @@ pub async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, 
 
 /// Create data for new squad posting
 pub async fn handle_squad_command(
-    ctx: &Context, 
-    command: &ApplicationCommandInteraction
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
 ) -> Result<(), Box<dyn StdError>> {
     let capacity: u8 = parse_squad_command(&command).await?;
     let response = respond_squad_command(&ctx, &command, capacity).await?;
@@ -113,8 +110,8 @@ pub async fn handle_add_member(
 
 /// Delete data for interacting user and update squad posting
 pub async fn handle_delete_member(
-    ctx: &Context, 
-    interaction: &MessageComponentInteraction
+    ctx: &Context,
+    interaction: &MessageComponentInteraction,
 ) -> Result<(), Box<dyn StdError>> {
     let message_id = interaction.message.id.as_u64().to_string();
     let user_id = interaction.user.id.as_u64().to_string();
