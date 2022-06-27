@@ -1,18 +1,17 @@
 use crate::embed;
 use crate::redis_io;
+use rand::Rng;
+use serenity::model::id::RoleId;
 use serenity::model::interactions::application_command::{
-    ApplicationCommand, ApplicationCommandInteraction,
-    ApplicationCommandInteractionDataOption, ApplicationCommandOptionType,
-    ApplicationCommandInteractionDataOptionValue,
+    ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandInteractionDataOption,
+    ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType,
 };
 use serenity::model::interactions::InteractionResponseType;
 use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::model::prelude::Message;
-use serenity::model::id::RoleId;
 use serenity::prelude::Context;
 use serenity::Error;
 use std::error::Error as StdError;
-use rand::Rng;
 
 /// Get squad size argument from /squad command
 async fn parse_squad_size(
@@ -24,7 +23,7 @@ async fn parse_squad_size(
         .iter()
         .filter(|opt| opt.name == "size")
         .collect();
-        
+
     let option = options.get(0);
 
     let option = match option {
@@ -64,7 +63,7 @@ async fn parse_squad_role(
         .iter()
         .filter(|opt| opt.name == "role")
         .collect();
-        
+
     let option = options.get(0);
 
     let option = match option {
@@ -103,7 +102,7 @@ async fn parse_squad_id(
         .iter()
         .filter(|opt| opt.name == "id")
         .collect();
-        
+
     let option = options.get(0);
 
     let option = match option {
@@ -138,7 +137,7 @@ async fn respond_squad_command(
     command: &ApplicationCommandInteraction,
     squad_id: &String,
     capacity: u8,
-    role_id: Option<RoleId>
+    role_id: Option<RoleId>,
 ) -> Result<Message, Error> {
     command
         .create_interaction_response(&ctx.http, |response| {
@@ -204,7 +203,7 @@ pub async fn handle_squad_command(
             let id = generate_squad_id();
             let capacity = match capacity {
                 Some(n) => n,
-                None => 5
+                None => 5,
             };
             redis_io::build_squad(&mut con, &id, capacity)?;
             let response = respond_squad_command(&ctx, &command, &id, capacity, role_id).await?;
@@ -213,7 +212,7 @@ pub async fn handle_squad_command(
             redis_io::build_posting(&mut con, &channel_id, &message_id, role_id, &id)?;
         }
     }
-    
+
     Ok(())
 }
 

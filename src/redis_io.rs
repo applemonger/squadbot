@@ -41,7 +41,10 @@ pub async fn get_redis_connection(ctx: &Context) -> Result<redis::Connection, Bo
 }
 
 /// Helper function to retrieve squad id from a given posting (message id)
-pub fn get_squad_id(con: &mut redis::Connection, message_id: &String) -> redis::RedisResult<String> {
+pub fn get_squad_id(
+    con: &mut redis::Connection,
+    message_id: &String,
+) -> redis::RedisResult<String> {
     let posting_id = posting_id(&message_id);
     let squad_id = redis::cmd("HGET")
         .arg(&posting_id)
@@ -104,7 +107,7 @@ pub fn build_posting(
                 .arg("role")
                 .arg(id.as_u64().to_string())
                 .query(con)?;
-        },
+        }
         None => {}
     }
     redis::cmd("EXPIRE")
@@ -386,9 +389,7 @@ pub fn get_role_id(
                 .query::<u64>(con)?
                 .into();
             Ok(Some(role_id))
-        },
-        _ => {
-            Ok(None)
         }
+        _ => Ok(None),
     }
 }

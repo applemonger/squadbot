@@ -5,11 +5,11 @@ use serenity::builder::{
     CreateActionRow, CreateButton, CreateComponents, CreateInteractionResponseData, EditMessage,
 };
 use serenity::client::Context;
+use serenity::model::id::RoleId;
 use serenity::model::id::{ChannelId, MessageId, UserId};
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::mention::Mention;
 use serenity::prelude::Mentionable;
-use serenity::model::id::RoleId;
 use serenity::utils::Colour;
 use std::collections::HashMap;
 use std::error::Error;
@@ -81,7 +81,7 @@ fn get_colour() -> Colour {
 }
 
 /// Base description included on forming squad postings.
-pub fn create_description(capacity: u8, role_id: Option<RoleId>) -> String {   
+pub fn create_description(capacity: u8, role_id: Option<RoleId>) -> String {
     match role_id {
         Some(r) => {
             format!(
@@ -91,7 +91,7 @@ pub fn create_description(capacity: u8, role_id: Option<RoleId>) -> String {
                 r.mention(),
                 capacity.to_string()
             )
-        },
+        }
         None => {
             format!(
                 "1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
