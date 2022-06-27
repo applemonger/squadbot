@@ -14,12 +14,19 @@ pub async fn notify_squads(
         // Get members of squad and the channel of the squad posting
         let members = redis_io::get_members(con, &squad)?;
         // Include roster of squad members in each message
-        let mut roster = String::new();
+        let mut roster = String::from("**Members**\n");
         for (key, value) in &members {
             let mention = format!("{}", Mention::from(*key));
             let ttl = embed::format_ttl(*value);
             let line = &format!("{} available for {}\n", mention, ttl)[..];
             roster.push_str(line);
+        }
+        // Build list of channels that the squad was posted in
+        let channel_ids = redis_io::get_channels(con, &squad)?;
+        let mut channels = String::from("**Channels**\n");
+        for channel in &channel_ids {
+            let mention = &format!("{}\n", Mention::from(*channel))[..];
+            channels.push_str(mention)
         }
         // Send message to each squad member
         for (user_id, _ttl) in &members {
@@ -28,7 +35,7 @@ pub async fn notify_squads(
                 .send_message(&ctx.http, |m| {
                     m.embed(|e| {
                         e.title("**Your squad is ready!**");
-                        e.description(format!("Members:\n{}", roster));
+                        e.description(format!("{}\n{}", roster, channels));
                         e
                     });
                     m

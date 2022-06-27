@@ -71,6 +71,12 @@ pub fn posting_id(message_id: &String) -> String {
     format!("posting:{}", message_id)
 }
 
+/// Helper function to create a channels id for Redis.
+/// This is the key of the Set which contains all channels which a squad was posted in.
+pub fn channels_id(squad_id: &String) -> String {
+    format!("channels:{}", squad_id)
+}
+
 /// Add new data for squad postings to the Redis data store
 /// HASH posting:msg_id
 ///     field channel: id of channel in which squad posting was made
@@ -85,6 +91,7 @@ pub fn build_posting(
     squad_id: &String,
 ) -> redis::RedisResult<()> {
     let posting_id = posting_id(&message_id);
+    let channels_id = channels_id(&squad_id);
     redis::cmd("HSET")
         .arg(&posting_id)
         .arg("squad")
@@ -99,6 +106,14 @@ pub fn build_posting(
         .arg(&posting_id)
         .arg("message")
         .arg(&message_id)
+        .query(con)?;
+    redis::cmd("SADD")
+        .arg(&channels_id)
+        .arg(&channel_id)
+        .query(con)?;
+    redis::cmd("EXPIRE")
+        .arg(&channels_id)
+        .arg(POSTING_TTL)
         .query(con)?;
     match role_id {
         Some(id) => {
@@ -392,4 +407,19 @@ pub fn get_role_id(
         }
         _ => Ok(None),
     }
+}
+
+/// Get the channels in which a squad is posted
+pub fn get_channels(
+    con: &mut redis::Connection,
+    squad_id: &String,
+) -> redis::RedisResult<Vec<ChannelId>> {
+    let channels_id = channels_id(&squad_id);
+    let channels: Vec<ChannelId> = redis::cmd("SMEMBERS")
+        .arg(&channels_id)
+        .clone()
+        .iter::<u64>(con)?
+        .map(|i| ChannelId::from(i))
+        .collect();
+    Ok(channels)
 }
