@@ -5,11 +5,11 @@ use serenity::builder::{
     CreateActionRow, CreateButton, CreateComponents, CreateInteractionResponseData, EditMessage,
 };
 use serenity::client::Context;
+use serenity::model::id::RoleId;
 use serenity::model::id::{ChannelId, MessageId, UserId};
 use serenity::model::interactions::message_component::ButtonStyle;
 use serenity::model::mention::Mention;
 use serenity::prelude::Mentionable;
-use serenity::model::id::RoleId;
 use serenity::utils::Colour;
 use std::collections::HashMap;
 use std::error::Error;
@@ -85,13 +85,12 @@ pub fn create_description(capacity: u8, role_id: Option<RoleId>) -> String {
     match role_id {
         Some(r) => {
             format!(
-                "{} \n
-                1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
+                "{}\n\n1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
                 SquadBot will message you when at least {} people are ready.\n\n",
                 r.mention(),
                 capacity.to_string()
             )
-        },
+        }
         None => {
             format!(
                 "1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
@@ -116,14 +115,16 @@ pub fn format_ttl(ttl: u64) -> String {
 /// Used to build the initial squad posting
 pub fn build_embed<'a, 'b>(
     m: &'b mut CreateInteractionResponseData<'a>,
+    squad_id: &String,
     capacity: u8,
-    role_id: Option<RoleId>
+    role_id: Option<RoleId>,
 ) -> &'b mut CreateInteractionResponseData<'a> {
     let description = create_description(capacity, role_id);
     m.embed(|e| {
         e.title("Assemble your squad!");
         e.description(description);
         e.colour(get_colour());
+        e.footer(|f| f.text(format!("ID: {}", &squad_id)));
         e
     });
     m.components(|c| action_rows(c));
@@ -147,9 +148,9 @@ pub fn build_description(
         SquadStatus::Forming => {
             let capacity: u8 = redis_io::get_capacity(con, &squad_id)?;
             let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id)?;
+            let squad_ttl = redis_io::get_ttl(con, &squad_id)?;
             let posting_id = redis_io::posting_id(&message_id);
-            let posting_ttl = redis_io::get_ttl(con, &posting_id)?;
-            let role_id = redis_io::get_role_id(con, &squad_id)?;
+            let role_id = redis_io::get_role_id(con, &posting_id)?;
             let base_description = create_description(capacity, role_id);
             let mut roster = String::new();
             for (key, value) in &members {
@@ -160,7 +161,7 @@ pub fn build_description(
             }
             let status = format!(
                 "🟡 This squad is still forming. Time left: {}",
-                format_ttl(posting_ttl)
+                format_ttl(squad_ttl),
             );
             format!(
                 "{}**Current Squad**\n{}\n{}",
@@ -192,6 +193,7 @@ pub fn build_description(
 /// Expired squad: Buttons are removed.
 pub fn update_embed<'a, 'b>(
     m: &'b mut EditMessage<'a>,
+    squad_id: &String,
     squad_status: SquadStatus,
     description: &String,
 ) -> &'b mut EditMessage<'a> {
@@ -200,6 +202,7 @@ pub fn update_embed<'a, 'b>(
         e.title("Assemble your squad!");
         e.description(description);
         e.colour(get_colour());
+        e.footer(|f| f.text(format!("ID: {}", &squad_id)));
         e
     });
 
@@ -222,13 +225,13 @@ pub async fn build_message(
     con: &mut redis::Connection,
     message_id: &String,
 ) -> Result<(), Box<dyn Error>> {
-    let squad_id = redis_io::squad_id(&message_id);
+    let squad_id = redis_io::get_squad_id(con, &message_id)?;
     let squad_status = redis_io::get_squad_status(con, &squad_id)?;
     let description = build_description(con, &squad_id, &squad_status, &message_id)?;
     let message_id_u64 = message_id.parse()?;
     channel_id
         .edit_message(&ctx, MessageId(message_id_u64), |m| {
-            update_embed(m, squad_status, &description)
+            update_embed(m, &squad_id, squad_status, &description)
         })
         .await?;
     Ok(())

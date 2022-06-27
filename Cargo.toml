@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 typemap_rev = "0.1.5"
-lazy_static = "1.4.0"
+rand = "0.8.5"
 redis = "0.21.5"
 chrono = "0.4.19"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
