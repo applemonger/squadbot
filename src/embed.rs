@@ -159,9 +159,8 @@ pub fn build_description(
                 roster.push_str(line);
             }
             let status = format!(
-                "🟡 This squad is still forming. Time left: {}\n\nID: `{}`",
+                "🟡 This squad is still forming. Time left: {}",
                 format_ttl(squad_ttl),
-                &squad_id
             );
             format!(
                 "{}**Current Squad**\n{}\n{}",
@@ -193,6 +192,7 @@ pub fn build_description(
 /// Expired squad: Buttons are removed.
 pub fn update_embed<'a, 'b>(
     m: &'b mut EditMessage<'a>,
+    squad_id: &String,
     squad_status: SquadStatus,
     description: &String,
 ) -> &'b mut EditMessage<'a> {
@@ -201,6 +201,7 @@ pub fn update_embed<'a, 'b>(
         e.title("Assemble your squad!");
         e.description(description);
         e.colour(get_colour());
+        e.footer(|f| f.text(format!("ID: {}", &squad_id)));
         e
     });
 
@@ -229,7 +230,7 @@ pub async fn build_message(
     let message_id_u64 = message_id.parse()?;
     channel_id
         .edit_message(&ctx, MessageId(message_id_u64), |m| {
-            update_embed(m, squad_status, &description)
+            update_embed(m, &squad_id, squad_status, &description)
         })
         .await?;
     Ok(())
