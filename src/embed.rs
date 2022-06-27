@@ -147,9 +147,9 @@ pub fn build_description(
         SquadStatus::Forming => {
             let capacity: u8 = redis_io::get_capacity(con, &squad_id)?;
             let members: HashMap<UserId, u64> = redis_io::get_members(con, &squad_id)?;
+            let squad_ttl = redis_io::get_ttl(con, &squad_id)?;
             let posting_id = redis_io::posting_id(&message_id);
-            let posting_ttl = redis_io::get_ttl(con, &posting_id)?;
-            let role_id = redis_io::get_role_id(con, &squad_id)?;
+            let role_id = redis_io::get_role_id(con, &posting_id)?;
             let base_description = create_description(capacity, role_id);
             let mut roster = String::new();
             for (key, value) in &members {
@@ -159,8 +159,9 @@ pub fn build_description(
                 roster.push_str(line);
             }
             let status = format!(
-                "🟡 This squad is still forming. Time left: {}",
-                format_ttl(posting_ttl)
+                "🟡 This squad is still forming. Time left: {}\n\nID: `{}`",
+                format_ttl(squad_ttl),
+                &squad_id
             );
             format!(
                 "{}**Current Squad**\n{}\n{}",
@@ -222,7 +223,7 @@ pub async fn build_message(
     con: &mut redis::Connection,
     message_id: &String,
 ) -> Result<(), Box<dyn Error>> {
-    let squad_id = redis_io::squad_id(&message_id);
+    let squad_id = redis_io::get_squad_id(con, &message_id)?;
     let squad_status = redis_io::get_squad_status(con, &squad_id)?;
     let description = build_description(con, &squad_id, &squad_status, &message_id)?;
     let message_id_u64 = message_id.parse()?;
