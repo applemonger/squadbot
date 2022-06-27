@@ -17,26 +17,33 @@ use rand::Rng;
 /// Get squad size argument from /squad command
 async fn parse_squad_size(
     command: &ApplicationCommandInteraction,
-) -> Result<u8, Box<dyn StdError>> {
-    let options = command.data.options.get(0);
+) -> Result<Option<u8>, Box<dyn StdError>> {
+    let options: Vec<&ApplicationCommandInteractionDataOption> = command
+        .data
+        .options
+        .iter()
+        .filter(|opt| opt.name == "size")
+        .collect();
+        
+    let option = options.get(0);
 
-    let options = match options {
+    let option = match option {
         Some(opt) => opt,
         None => {
-            return Err("Unable to parse options.".into());
+            return Ok(Some(5));
         }
     };
 
-    let options = options.resolved.as_ref();
+    let option = option.resolved.as_ref();
 
-    let options = match options {
+    let option = match option {
         Some(opt) => opt,
         None => {
-            return Err("Unable to parse reference.".into());
+            return Ok(Some(5));
         }
     };
 
-    let size = match options {
+    let size = match option {
         ApplicationCommandInteractionDataOptionValue::Integer(size) => size,
         _ => {
             return Err("Unable to parse size.".into());
@@ -44,7 +51,7 @@ async fn parse_squad_size(
     };
 
     let size = u8::try_from(*size)?;
-    Ok(size)
+    Ok(Some(size))
 }
 
 /// Get squad role argument from /squad command
@@ -129,6 +136,7 @@ async fn parse_squad_id(
 async fn respond_squad_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
+    squad_id: &String,
     capacity: u8,
     role_id: Option<RoleId>
 ) -> Result<Message, Error> {
@@ -136,7 +144,7 @@ async fn respond_squad_command(
         .create_interaction_response(&ctx.http, |response| {
             response
                 .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|m| embed::build_embed(m, capacity, role_id))
+                .interaction_response_data(|m| embed::build_embed(m, &squad_id, capacity, role_id))
         })
         .await?;
     command.get_interaction_response(&ctx.http).await
@@ -151,11 +159,11 @@ pub async fn register_squad_command(ctx: Context) -> Result<ApplicationCommand, 
             .create_option(|option| {
                 option
                     .name("size")
-                    .description("Number from 2 to 10")
+                    .description("Number from 1 to 10")
                     .kind(ApplicationCommandOptionType::Integer)
-                    .min_int_value(2)
+                    .min_int_value(1)
                     .max_int_value(10)
-                    .required(true)
+                    .required(false)
             })
             .create_option(|option| {
                 option
@@ -180,21 +188,26 @@ pub async fn handle_squad_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
 ) -> Result<(), Box<dyn StdError>> {
-    let capacity: u8 = parse_squad_size(&command).await?;
+    let capacity: Option<u8> = parse_squad_size(&command).await?;
     let role_id: Option<RoleId> = parse_squad_role(&command).await?;
     let squad_id: Option<String> = parse_squad_id(&command).await?;
     let mut con = redis_io::get_redis_connection(&ctx).await?;
     match squad_id {
         Some(id) => {
-            let response = respond_squad_command(&ctx, &command, capacity, role_id).await?;
+            let capacity = redis_io::get_capacity(&mut con, &id)?;
+            let response = respond_squad_command(&ctx, &command, &id, capacity, role_id).await?;
             let channel_id = command.channel_id.as_u64().to_string();
-            let message_id = response.id.as_u64().to_string();   
+            let message_id = response.id.as_u64().to_string();
             redis_io::build_posting(&mut con, &channel_id, &message_id, role_id, &id)?;
         }
         None => {
             let id = generate_squad_id();
+            let capacity = match capacity {
+                Some(n) => n,
+                None => 5
+            };
             redis_io::build_squad(&mut con, &id, capacity)?;
-            let response = respond_squad_command(&ctx, &command, capacity, role_id).await?;
+            let response = respond_squad_command(&ctx, &command, &id, capacity, role_id).await?;
             let channel_id = command.channel_id.as_u64().to_string();
             let message_id = response.id.as_u64().to_string();
             redis_io::build_posting(&mut con, &channel_id, &message_id, role_id, &id)?;

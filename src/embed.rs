@@ -81,7 +81,7 @@ fn get_colour() -> Colour {
 }
 
 /// Base description included on forming squad postings.
-pub fn create_description(capacity: u8, role_id: Option<RoleId>) -> String {
+pub fn create_description(capacity: u8, role_id: Option<RoleId>) -> String {   
     match role_id {
         Some(r) => {
             format!(
@@ -116,14 +116,16 @@ pub fn format_ttl(ttl: u64) -> String {
 /// Used to build the initial squad posting
 pub fn build_embed<'a, 'b>(
     m: &'b mut CreateInteractionResponseData<'a>,
+    squad_id: &String,
     capacity: u8,
-    role_id: Option<RoleId>
+    role_id: Option<RoleId>,
 ) -> &'b mut CreateInteractionResponseData<'a> {
     let description = create_description(capacity, role_id);
     m.embed(|e| {
         e.title("Assemble your squad!");
         e.description(description);
         e.colour(get_colour());
+        e.footer(|f| f.text(format!("ID: {}", &squad_id)));
         e
     });
     m.components(|c| action_rows(c));
