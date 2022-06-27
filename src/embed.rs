@@ -85,8 +85,7 @@ pub fn create_description(capacity: u8, role_id: Option<RoleId>) -> String {
     match role_id {
         Some(r) => {
             format!(
-                "{} \n
-                1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
+                "{} \n1️⃣ Use the number reacts to indicate for how many hours you are available.\n\n\
                 SquadBot will message you when at least {} people are ready.\n\n",
                 r.mention(),
                 capacity.to_string()
