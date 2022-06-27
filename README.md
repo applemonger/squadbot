@@ -6,5 +6,4 @@ Use `/squad` to create a new squad posting. Users can react to the message to re
 
 |**Commands**|**Description**|
 | --- | --- |
-|`/squad <size>`|Creates a new squad posting for the specified number of people.|
-|`/squad <size> <role>`|Creates a new squad posting for the specified number of people, while also pinging a specified role.|
+|`/squad size: role: id:`|Creates a new squad posting. `size` determines the full size of the squad. `role` will include a mention for the given role in the posting. `id` will link the posting to another posting (works cross-server).|
