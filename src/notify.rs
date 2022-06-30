@@ -32,17 +32,18 @@ pub async fn notify_squads(
         redis_io::fill_squad(con, &squad)?;
         // Send message to each squad member
         for (user_id, _ttl) in &members {
-            let dm_channel = user_id.create_dm_channel(&ctx.http).await?;
-            dm_channel
-                .send_message(&ctx.http, |m| {
-                    m.embed(|e| {
-                        e.title("**Your squad is ready!**");
-                        e.description(format!("{}\n{}", roster, channels));
-                        e
-                    });
-                    m
-                })
-                .await?;
+            if let Ok(dm_channel) = user_id.create_dm_channel(&ctx.http).await {
+                let _ = dm_channel
+                    .send_message(&ctx.http, |m| {
+                        m.embed(|e| {
+                            e.title("**Your squad is ready!**");
+                            e.description(format!("{}\n{}", roster, channels));
+                            e
+                        });
+                        m
+                    })
+                    .await;
+            }
         }
     }
     Ok(())
