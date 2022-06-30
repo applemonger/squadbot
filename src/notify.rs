@@ -28,6 +28,8 @@ pub async fn notify_squads(
             let mention = &format!("{}\n", Mention::from(*channel))[..];
             channels.push_str(mention)
         }
+        // Mark the squad as filled
+        redis_io::fill_squad(con, &squad)?;
         // Send message to each squad member
         for (user_id, _ttl) in &members {
             let dm_channel = user_id.create_dm_channel(&ctx.http).await?;
@@ -42,8 +44,6 @@ pub async fn notify_squads(
                 })
                 .await?;
         }
-        // Mark the squad as filled
-        redis_io::fill_squad(con, &squad)?;
     }
     Ok(())
 }
