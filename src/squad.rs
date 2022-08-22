@@ -11,6 +11,7 @@ use serenity::model::prelude::message_component::MessageComponentInteraction;
 use serenity::model::prelude::Message;
 use serenity::prelude::Context;
 use serenity::Error;
+use serenity::prelude::Mentionable;
 use std::error::Error as StdError;
 
 /// Get squad size argument from /squad command
@@ -139,6 +140,9 @@ async fn respond_squad_command(
     capacity: u8,
     role_id: Option<RoleId>,
 ) -> Result<Message, Error> {
+    if let Some(role) = role_id {
+        command.channel_id.say(&ctx.http, format!("Squad forming! {}", role.mention())).await?;
+    }
     command
         .create_interaction_response(&ctx.http, |response| {
             response
